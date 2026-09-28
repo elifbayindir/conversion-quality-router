@@ -1,0 +1,31 @@
+{
+  "feature_contract_version": "1.0.0",
+  "target_column": "Revenue",
+  "deployment_safe_features": [
+    {"name": "Administrative", "type": "numeric"},
+    {"name": "Administrative_Duration", "type": "numeric"},
+    {"name": "Informational", "type": "numeric"},
+    {"name": "Informational_Duration", "type": "numeric"},
+    {"name": "ProductRelated", "type": "numeric"},
+    {"name": "ProductRelated_Duration", "type": "numeric"},
+    {"name": "BounceRates", "type": "numeric"},
+    {"name": "ExitRates", "type": "numeric"},
+    {"name": "SpecialDay", "type": "numeric"},
+    {"name": "Month", "type": "categorical"},
+    {"name": "OperatingSystems", "type": "categorical"},
+    {"name": "Browser", "type": "categorical"},
+    {"name": "Region", "type": "categorical"},
+    {"name": "TrafficType", "type": "categorical"},
+    {"name": "VisitorType", "type": "categorical"},
+    {"name": "Weekend", "type": "boolean"}
+  ],
+  "excluded_features": [
+    {
+      "name": "PageValues",
+      "type": "numeric",
+      "reason": "LEAKAGE_RISK",
+      "explanation": "PageValues is computed by the analytics source from the average value of pages visited prior to completing a transaction, making it derived from transaction/conversion outcomes rather than observable independently at decision time. Excluded from the primary deployment-safe model per PROJECT_BLUEPRINT.md Section 4.4 and decision D06. May be used only in a separate, explicitly labeled sensitivity analysis, never in the deployment-safe model or the agent/automation path."
+    }
+  ],
+  "notes": "See docs/leakage-audit.md for the full per-feature availability review."
+}

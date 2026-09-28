@@ -1,0 +1,40 @@
+# Local orchestration and progress state
+.project-control/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Local tooling state (not part of the project)
+.claude/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Models and generated data
+data/raw/
+data/processed/
+artifacts/models/
+artifacts/preprocessors/
+artifacts/reports/
+
+# Runtime
+logs/
+*.log
+
+# Editors and OS
+.DS_Store
+.vscode/settings.json

@@ -1,0 +1,39 @@
+{
+  "seed": 42,
+  "n_total_rows": 12330,
+  "overall_positive_rate": 0.1547,
+  "splits": [
+    {
+      "name": "train",
+      "n_rows": 8635,
+      "fraction_of_total": 0.7003,
+      "n_positive": 1336,
+      "n_negative": 7299,
+      "positive_rate": 0.1547
+    },
+    {
+      "name": "validation",
+      "n_rows": 1850,
+      "fraction_of_total": 0.15,
+      "n_positive": 286,
+      "n_negative": 1564,
+      "positive_rate": 0.1546
+    },
+    {
+      "name": "test",
+      "n_rows": 1845,
+      "fraction_of_total": 0.1496,
+      "n_positive": 286,
+      "n_negative": 1559,
+      "positive_rate": 0.155
+    }
+  ],
+  "duplicate_leakage_check": {
+    "fingerprint_basis": "16 deployment-safe features (feature_contract.json v1.0.0); excludes PageValues and Revenue",
+    "n_unique_fingerprints": 12205,
+    "n_duplicate_fingerprint_groups": 76,
+    "n_duplicate_extra_rows": 125,
+    "n_conflicting_label_groups": 0,
+    "n_cross_split_fingerprint_groups": 0
+  }
+}
