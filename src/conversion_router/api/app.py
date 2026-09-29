@@ -44,6 +44,9 @@ class ArtifactState:
 async def lifespan(app: FastAPI):
     app.state.artifact_state = ArtifactState()
     app.state.artifact_state.try_load()
+    # Unset in production: get_decision() builds a real AnthropicProvider lazily.
+    # Tests set this to a fake/mock provider so no run ever calls the network.
+    app.state.llm_provider = None
     yield
 
 

@@ -1,14 +1,15 @@
-"""Strict Pydantic contracts for the API, model, and (future) agent layers.
+"""Strict Pydantic contracts for the API, model, and agent layers.
 
 Every model here forbids unknown fields. Numeric ranges and categorical
 whitelists are derived from the same single source of truth used by data
 validation (`conversion_router.data.validate`), so the API contract and the
 training-time schema can never silently drift apart.
 
-This module defines data shapes only. It does not implement the LLM agent
-or n8n behavior (see PROJECT_BLUEPRINT.md Sections 7 and 9) -- the
-`DecisionResponse` schema exists so later phases have a stable contract to
-target, not because the decision logic is implemented yet.
+This module defines data shapes only; it contains no model, agent, or
+automation logic itself. The LLM decision agent that produces
+`DecisionResponse` payloads is implemented in `conversion_router.agent`
+(PROJECT_BLUEPRINT.md Section 7); n8n automation (Section 9) is a separate
+external workflow that calls this project's API, not part of this codebase.
 """
 
 from __future__ import annotations
@@ -131,8 +132,9 @@ class PredictionResponse(StrictModel):
 
 
 # ---------------------------------------------------------------------------
-# Decision response (PROJECT_BLUEPRINT.md Section 7.3) -- schema only.
-# The agent that produces this payload is implemented in a later phase.
+# Decision response (PROJECT_BLUEPRINT.md Section 7.3). Produced by
+# conversion_router.agent.client.get_decision(); see that module and
+# docs/agent-policy.md for the validation/fallback flow.
 # ---------------------------------------------------------------------------
 
 
@@ -174,6 +176,42 @@ class DecisionResponse(StrictModel):
     explanation: str = Field(max_length=500)
     agent_version: str
     schema_version: str = SCHEMA_VERSION
+
+
+# ---------------------------------------------------------------------------
+# LLM-restricted decision core (PROJECT_BLUEPRINT.md Section 7.2-7.3).
+#
+# This is the ONLY shape the LLM is ever allowed to produce. It excludes
+# SYSTEM_FALLBACK from the decision enum entirely (the model cannot select
+# it), excludes the app/fallback-only reason codes, and omits every field
+# the application fills in deterministically (request_id, agent_version,
+# schema_version, and anything derived from the model's own prediction).
+# ---------------------------------------------------------------------------
+
+
+class LLMDecision(StrEnum):
+    LOG_ONLY = "LOG_ONLY"
+    PRIORITY_REVIEW = "PRIORITY_REVIEW"
+    HUMAN_REVIEW = "HUMAN_REVIEW"
+
+
+class LLMReasonCode(StrEnum):
+    MODEL_UNCERTAIN = "MODEL_UNCERTAIN"
+    NEAR_DECISION_THRESHOLD = "NEAR_DECISION_THRESHOLD"
+    HIGH_CONFIDENCE_POSITIVE = "HIGH_CONFIDENCE_POSITIVE"
+    HIGH_CONFIDENCE_NEGATIVE = "HIGH_CONFIDENCE_NEGATIVE"
+
+
+class LLMDecisionCore(StrictModel):
+    decision: LLMDecision
+    priority: Priority
+    allowed_action: AllowedAction
+    requires_human_approval: bool
+    # NOTE: max_length/maxItems is intentionally omitted on reason_codes -- Anthropic's
+    # structured-output JSON Schema support rejects "maxItems" on array types (verified
+    # against the live API; see DECISIONS.md D10). min_length is supported and kept.
+    reason_codes: list[LLMReasonCode] = Field(min_length=1)
+    explanation: str = Field(max_length=280)
 
 
 # ---------------------------------------------------------------------------

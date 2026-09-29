@@ -91,13 +91,16 @@ large or license-restricted files.
 
 ## 6. Current implementation status
 
-As of this document's creation (P0 — Scope and scaffold):
+Updated as of P5 completion (decision agent):
 
-- Implemented: repository scaffold (directories and empty `__init__.py`
-  markers), `pyproject.toml` with core/dev dependency groups, `.gitignore`,
-  this architecture document, `.env.example`.
-- Not yet implemented: data loading/validation/preprocessing, baseline and MLP
-  training, calibration, the FastAPI service, the LLM agent client and
-  validator, and the n8n workflow. These are tracked as individual tasks in
-  `.project-control/tasks.json` (phases P1–P6) and are not claimed as done
-  until each task's acceptance criterion has recorded evidence.
+- Implemented: repository scaffold; data loading/validation/preprocessing
+  (`conversion_router.data`); logistic regression baseline and PyTorch MLP
+  with calibration (`conversion_router.modeling`); the FastAPI service
+  (`/health`, `/ready`, `/predict`, `/decide`, `/route`) with artifact
+  integrity verification; the LLM decision agent (provider-neutral client,
+  cross-field validator, deterministic fallback) per
+  `docs/agent-policy.md`.
+- Not yet implemented: the n8n automation workflow (P6). Tracked as
+  individual tasks in `.project-control/tasks.json` (phase P6) and not
+  claimed as done until each task's acceptance criterion has recorded
+  evidence.
