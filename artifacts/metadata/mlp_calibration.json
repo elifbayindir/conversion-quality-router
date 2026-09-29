@@ -1,0 +1,11 @@
+{
+  "calibration_version": "1.0.0",
+  "decision_policy_version": "1.0.0",
+  "method": "isotonic_regression",
+  "fit_on": "validation_only",
+  "uncertainty_band": 0.05,
+  "uncertainty_rule": "uncertain = |calibrated_probability - threshold| < uncertainty_band",
+  "brier_score_raw": 0.2126,
+  "brier_score_calibrated": 0.1126,
+  "n_validation_rows": 1850
+}

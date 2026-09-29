@@ -1,0 +1,67 @@
+{
+  "model_name": "conversion_mlp",
+  "model_version": "1.0.0",
+  "seed": 42,
+  "feature_contract_version": "1.0.0",
+  "preprocessor_output_dim": 71,
+  "n_train_rows": 8635,
+  "n_validation_rows": 1850,
+  "training_configuration": {
+    "hidden_sizes": [
+      128,
+      64,
+      32
+    ],
+    "dropout": 0.3,
+    "learning_rate": 0.001,
+    "batch_size": 64,
+    "max_epochs": 100,
+    "patience": 10,
+    "best_epoch": 5,
+    "n_epochs_run": 15,
+    "best_val_pr_auc_raw": 0.356
+  },
+  "calibration": {
+    "calibration_version": "1.0.0",
+    "decision_policy_version": "1.0.0",
+    "method": "isotonic_regression",
+    "fit_on": "validation_only",
+    "uncertainty_band": 0.05,
+    "uncertainty_rule": "uncertain = |calibrated_probability - threshold| < uncertainty_band",
+    "brier_score_raw": 0.2126,
+    "brier_score_calibrated": 0.1126,
+    "n_validation_rows": 1850
+  },
+  "threshold_selection": {
+    "method": "business_cost_grid_search_on_validation_only",
+    "threshold": 0.12,
+    "false_negative_cost": 5.0,
+    "false_positive_cost": 1.0,
+    "cost_rationale": "Same business-cost rationale as the baseline (T203): a missed converting session is assumed 5x costlier than one unnecessary manual review. Applied to calibrated MLP probabilities on validation data only.",
+    "expected_cost_at_threshold": 878.0,
+    "n_false_negatives": 50,
+    "n_false_positives": 628,
+    "n_true_positives": 236,
+    "n_true_negatives": 936,
+    "n_validation_rows": 1850,
+    "selected_on": "validation_only"
+  },
+  "package_versions": {
+    "python": "3.11.15",
+    "torch": "2.14.0",
+    "scikit_learn": "1.9.1",
+    "pandas": "2.3.3",
+    "numpy": "1.26.4"
+  },
+  "artifact_hashes": {
+    "mlp_checkpoint_sha256": "deb50dc03b063a3dc66e17f6214219603ead0e876eae45874d80bffe2c80e0cf",
+    "preprocessor_sha256": "7bd0a38643251d6518a51e7803eba12f32521b1ab1173611acd2acc77a0025c6",
+    "calibrator_sha256": "8f4361dd61ba7ac5d11b9bd31323c1d218bdfa2cbd966e1c54bf8af5033c1df8"
+  },
+  "artifact_paths": {
+    "model": "artifacts/models/mlp_checkpoint.pt",
+    "preprocessor": "artifacts/preprocessors/preprocessor.joblib",
+    "calibrator": "artifacts/preprocessors/calibrator.joblib"
+  },
+  "frozen_before_test_evaluation": true
+}

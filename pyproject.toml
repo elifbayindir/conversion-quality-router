@@ -24,6 +24,9 @@ dependencies = [
 dev = [
   "pytest>=8.0,<9",
   "ruff>=0.4,<1",
+  "matplotlib>=3.8,<4",
+  "nbconvert>=7.16,<8",
+  "ipykernel>=6.29,<7",
 ]
 
 [tool.setuptools.packages.find]

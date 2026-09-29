@@ -457,8 +457,7 @@ conversion-quality-router/
 │   ├── evaluation.md
 │   └── demo-script.md
 ├── notebooks/
-│   ├── 01_eda.ipynb
-│   └── 02_model_evaluation.ipynb
+│   └── 01_end_to_end_analysis.ipynb
 ├── src/conversion_router/
 │   ├── config.py
 │   ├── schemas.py
@@ -498,7 +497,7 @@ conversion-quality-router/
     └── fixtures/
 ```
 
-Notebook'lar kanıt ve anlatım içindir. Üretim mantığının tek kopyası `src/` altında bulunur.
+Notebook kanıt ve anlatım içindir; model mantığını yeniden yazmaz, `src/` modüllerini ve dondurulmuş artifact/prediction dosyalarını kullanır. Üretim mantığının tek kopyası `src/` altında bulunur. Tek, baştan sona çalıştırılmış ve çıktıları görünür `notebooks/01_end_to_end_analysis.ipynb` dosyası zorunlu teslim parçasıdır (bkz. `.project-control/DECISIONS.md` D08 ve T305).
 
 ---
 
@@ -730,7 +729,7 @@ Zorunlu:
 1. GitHub repository
 2. Kurulum ve çalışma adımları içeren README
 3. Veri ve lisans açıklaması
-4. EDA/model notebook'u veya eşdeğer rapor
+4. Tek, baştan sona çalıştırılmış ve çıktıları görünür EDA/model notebook'u (`notebooks/01_end_to_end_analysis.ipynb`; D08)
 5. Baseline ve MLP karşılaştırması
 6. Confusion matrix ve error analysis
 7. Model artifact metadata
