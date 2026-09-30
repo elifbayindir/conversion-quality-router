@@ -1,0 +1,32 @@
+{
+  "description": "workflow_request_id contains spaces and punctuation outside the allowed [A-Za-z0-9_-] charset.",
+  "input": {
+    "workflow_request_id": "bad id with spaces!",
+    "session": {
+      "Administrative": 0,
+      "Administrative_Duration": 0.0,
+      "Informational": 0,
+      "Informational_Duration": 0.0,
+      "ProductRelated": 1,
+      "ProductRelated_Duration": 10.0,
+      "BounceRates": 0.1,
+      "ExitRates": 0.1,
+      "SpecialDay": 0.0,
+      "Month": "Feb",
+      "OperatingSystems": 1,
+      "Browser": 1,
+      "Region": 1,
+      "TrafficType": 1,
+      "VisitorType": "Returning_Visitor",
+      "Weekend": false
+    }
+  },
+  "expected_http_status": 400,
+  "expected_response_shape": {
+    "status": "FAILED",
+    "error": {
+      "code": "INVALID_ENVELOPE"
+    }
+  },
+  "observed_result": "Verified: 400, error.message mentions the <=100-char [A-Za-z0-9_-] charset rule."
+}

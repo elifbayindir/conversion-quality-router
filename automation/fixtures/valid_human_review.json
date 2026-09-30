@@ -1,0 +1,37 @@
+{
+  "description": "Valid envelope; mock /route (TrafficType=3) returns HUMAN_REVIEW. Always requires approval.",
+  "mock_route_selector": {
+    "TrafficType": 3
+  },
+  "input": {
+    "workflow_request_id": "fixture-human-review-001",
+    "session": {
+      "Administrative": 0,
+      "Administrative_Duration": 0.0,
+      "Informational": 0,
+      "Informational_Duration": 0.0,
+      "ProductRelated": 1,
+      "ProductRelated_Duration": 10.0,
+      "BounceRates": 0.1,
+      "ExitRates": 0.1,
+      "SpecialDay": 0.0,
+      "Month": "Feb",
+      "OperatingSystems": 1,
+      "Browser": 1,
+      "Region": 1,
+      "TrafficType": 3,
+      "VisitorType": "Returning_Visitor",
+      "Weekend": false
+    }
+  },
+  "expected_http_status": 202,
+  "expected_response_shape": {
+    "decision": "HUMAN_REVIEW",
+    "allowed_action": "ADD_TO_REVIEW_QUEUE",
+    "requires_human_approval": true,
+    "status": "PENDING_HUMAN_REVIEW",
+    "notification_status": "SENT",
+    "approval_status": "PENDING"
+  },
+  "observed_result": "Verified: 202 PENDING_HUMAN_REVIEW. Resumed 3 separate real executions of this fixture with different outcomes -- see approval_accepted.json, approval_rejected.json, approval_expired.json."
+}

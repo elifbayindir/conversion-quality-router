@@ -1,0 +1,33 @@
+{
+  "description": "session includes PageValues, which must never be accepted (leakage-risk feature, excluded by design -- see feature_contract.json).",
+  "input": {
+    "workflow_request_id": "fixture-pagevalues-001",
+    "session": {
+      "Administrative": 0,
+      "Administrative_Duration": 0.0,
+      "Informational": 0,
+      "Informational_Duration": 0.0,
+      "ProductRelated": 1,
+      "ProductRelated_Duration": 10.0,
+      "BounceRates": 0.1,
+      "ExitRates": 0.1,
+      "SpecialDay": 0.0,
+      "Month": "Feb",
+      "OperatingSystems": 1,
+      "Browser": 1,
+      "Region": 1,
+      "TrafficType": 1,
+      "VisitorType": "Returning_Visitor",
+      "Weekend": false,
+      "PageValues": 5.0
+    }
+  },
+  "expected_http_status": 400,
+  "expected_response_shape": {
+    "status": "FAILED",
+    "error": {
+      "code": "INVALID_ENVELOPE"
+    }
+  },
+  "observed_result": "Verified: 400, error.message explicitly names PageValues as the leakage-risk reason for rejection."
+}

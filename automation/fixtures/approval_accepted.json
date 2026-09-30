@@ -1,0 +1,15 @@
+{
+  "description": "Human reviewer approves a pending HUMAN_REVIEW execution via its signed resume URL.",
+  "prerequisite": "A pending execution from valid_human_review.json or valid_priority_review_with_approval.json.",
+  "resume_call": {
+    "method": "POST",
+    "body": {
+      "action": "approve",
+      "note": "reviewer note, optional"
+    }
+  },
+  "expected_final_notification_shape": {
+    "approval_status": "APPROVED"
+  },
+  "observed_result": "Verified: second notification sent with approval_status=APPROVED and the given reviewer_note echoed back; execution status=success."
+}

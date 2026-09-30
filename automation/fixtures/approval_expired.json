@@ -1,0 +1,8 @@
+{
+  "description": "No resume call arrives before the bounded wait window elapses (production: 30 minutes; tested with a temporarily shortened 15-second window).",
+  "prerequisite": "A pending execution from valid_human_review.json; simply do not call the resume URL.",
+  "expected_final_notification_shape": {
+    "approval_status": "EXPIRED"
+  },
+  "observed_result": "Verified with a temporarily shortened 15s wait: after the window elapsed with no resume call, the workflow auto-continued and sent a second notification with approval_status=EXPIRED, reviewer_note=''. Execution status=success (not stuck/hung)."
+}

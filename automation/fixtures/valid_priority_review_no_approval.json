@@ -1,0 +1,37 @@
+{
+  "description": "Valid envelope; mock /route (TrafficType=2) returns PRIORITY_REVIEW, requires_human_approval=false. One notification, immediate 200 COMPLETED.",
+  "mock_route_selector": {
+    "TrafficType": 2
+  },
+  "input": {
+    "workflow_request_id": "fixture-priority-no-approval-001",
+    "session": {
+      "Administrative": 0,
+      "Administrative_Duration": 0.0,
+      "Informational": 0,
+      "Informational_Duration": 0.0,
+      "ProductRelated": 1,
+      "ProductRelated_Duration": 10.0,
+      "BounceRates": 0.1,
+      "ExitRates": 0.1,
+      "SpecialDay": 0.0,
+      "Month": "Feb",
+      "OperatingSystems": 1,
+      "Browser": 1,
+      "Region": 1,
+      "TrafficType": 2,
+      "VisitorType": "Returning_Visitor",
+      "Weekend": false
+    }
+  },
+  "expected_http_status": 200,
+  "expected_response_shape": {
+    "decision": "PRIORITY_REVIEW",
+    "allowed_action": "ADD_TO_REVIEW_QUEUE_PRIORITY",
+    "requires_human_approval": false,
+    "status": "COMPLETED",
+    "notification_status": "SENT",
+    "approval_status": "NOT_REQUIRED"
+  },
+  "observed_result": "Verified: 200, decision=PRIORITY_REVIEW, status=COMPLETED, notification_status=SENT (captured by the mock notification receiver), approval_status=NOT_REQUIRED."
+}

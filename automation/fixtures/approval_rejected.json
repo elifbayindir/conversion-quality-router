@@ -1,0 +1,15 @@
+{
+  "description": "Human reviewer rejects a pending HUMAN_REVIEW execution via its signed resume URL.",
+  "prerequisite": "A pending execution from valid_human_review.json.",
+  "resume_call": {
+    "method": "POST",
+    "body": {
+      "action": "reject",
+      "note": "reviewer note, optional"
+    }
+  },
+  "expected_final_notification_shape": {
+    "approval_status": "REJECTED"
+  },
+  "observed_result": "Verified: second notification sent with approval_status=REJECTED and the given reviewer_note echoed back; execution status=success."
+}

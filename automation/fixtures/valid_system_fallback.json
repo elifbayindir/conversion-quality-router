@@ -1,0 +1,36 @@
+{
+  "description": "Valid envelope; mock /route (TrafficType=4) returns SYSTEM_FALLBACK directly (as the real API's own agent fallback would). origin=api (not automation_error) since the API response itself was valid and already a fallback.",
+  "mock_route_selector": {
+    "TrafficType": 4
+  },
+  "input": {
+    "workflow_request_id": "fixture-system-fallback-001",
+    "session": {
+      "Administrative": 0,
+      "Administrative_Duration": 0.0,
+      "Informational": 0,
+      "Informational_Duration": 0.0,
+      "ProductRelated": 1,
+      "ProductRelated_Duration": 10.0,
+      "BounceRates": 0.1,
+      "ExitRates": 0.1,
+      "SpecialDay": 0.0,
+      "Month": "Feb",
+      "OperatingSystems": 1,
+      "Browser": 1,
+      "Region": 1,
+      "TrafficType": 4,
+      "VisitorType": "Returning_Visitor",
+      "Weekend": false
+    }
+  },
+  "expected_http_status": 202,
+  "expected_response_shape": {
+    "decision": "SYSTEM_FALLBACK",
+    "allowed_action": "ADD_TO_REVIEW_QUEUE",
+    "requires_human_approval": true,
+    "status": "PENDING_HUMAN_REVIEW",
+    "origin": "api"
+  },
+  "observed_result": "Verified: 202 PENDING_HUMAN_REVIEW, origin=api, resolved via approve."
+}

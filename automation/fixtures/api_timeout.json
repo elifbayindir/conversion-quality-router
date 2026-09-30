@@ -1,0 +1,37 @@
+{
+  "description": "Mock /route (TrafficType=8) sleeps 20s; the HTTP Request node's 10s timeout (with 1 retry) fires first.",
+  "mock_route_selector": {
+    "TrafficType": 8
+  },
+  "input": {
+    "workflow_request_id": "fixture-api-timeout-001",
+    "session": {
+      "Administrative": 0,
+      "Administrative_Duration": 0.0,
+      "Informational": 0,
+      "Informational_Duration": 0.0,
+      "ProductRelated": 1,
+      "ProductRelated_Duration": 10.0,
+      "BounceRates": 0.1,
+      "ExitRates": 0.1,
+      "SpecialDay": 0.0,
+      "Month": "Feb",
+      "OperatingSystems": 1,
+      "Browser": 1,
+      "Region": 1,
+      "TrafficType": 8,
+      "VisitorType": "Returning_Visitor",
+      "Weekend": false
+    }
+  },
+  "expected_http_status": 202,
+  "expected_response_shape": {
+    "decision": "SYSTEM_FALLBACK",
+    "origin": "automation_error",
+    "reason_codes": [
+      "AGENT_UNAVAILABLE"
+    ],
+    "status": "PENDING_HUMAN_REVIEW"
+  },
+  "observed_result": "Verified: ~21s total (2 attempts x 10s timeout + 1s wait-between), then 202 with origin=automation_error, explanation mentions 'timeout of 10000ms exceeded'."
+}

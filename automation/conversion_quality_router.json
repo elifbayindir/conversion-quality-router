@@ -1,0 +1,1083 @@
+{
+  "name": "Conversion Quality Router",
+  "nodes": [
+    {
+      "id": "2a700ba0-800a-49f5-9172-e81dd9e058f1",
+      "name": "POST Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "conversion-quality-router",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "a12ebdcf-fae4-4f3e-a020-6c12b2e2822f"
+    },
+    {
+      "id": "ec4b69f1-4329-46ff-8a48-d56f4bd55f1c",
+      "name": "Validate Envelope",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const allowedSessionFields = [\"Administrative\", \"Administrative_Duration\", \"Informational\", \"Informational_Duration\", \"ProductRelated\", \"ProductRelated_Duration\", \"BounceRates\", \"ExitRates\", \"SpecialDay\", \"Month\", \"OperatingSystems\", \"Browser\", \"Region\", \"TrafficType\", \"VisitorType\", \"Weekend\"];\n// The Webhook node (v2+) wraps the actual POST body under .body.\nconst body = $input.first().json.body;\nconst errors = [];\n\nconst workflowRequestId = body.workflow_request_id;\nconst idPattern = /^[A-Za-z0-9_-]{1,100}$/;\nif (typeof workflowRequestId !== 'string' || workflowRequestId.length === 0) {\n  errors.push('workflow_request_id is required and must be a non-empty string');\n} else if (!idPattern.test(workflowRequestId)) {\n  errors.push('workflow_request_id must be <=100 chars of [A-Za-z0-9_-]');\n}\n\nconst envelopeKeys = Object.keys(body || {});\nconst unknownEnvelopeKeys = envelopeKeys.filter(k => k !== 'workflow_request_id' && k !== 'session');\nif (unknownEnvelopeKeys.length > 0) {\n  errors.push('Unknown envelope field(s): ' + unknownEnvelopeKeys.join(', '));\n}\n\nconst session = body.session;\nif (typeof session !== 'object' || session === null || Array.isArray(session)) {\n  errors.push('session is required and must be an object');\n} else {\n  const sessionKeys = Object.keys(session);\n  const missing = allowedSessionFields.filter(f => !sessionKeys.includes(f));\n  const unknown = sessionKeys.filter(f => !allowedSessionFields.includes(f));\n  if (missing.length > 0) {\n    errors.push('session is missing required field(s): ' + missing.join(', '));\n  }\n  if (unknown.includes('PageValues')) {\n    errors.push('session must not include PageValues (leakage-risk feature, excluded by design)');\n  }\n  const otherUnknown = unknown.filter(f => f !== 'PageValues');\n  if (otherUnknown.length > 0) {\n    errors.push('session has unknown field(s): ' + otherUnknown.join(', '));\n  }\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    workflow_request_id: workflowRequestId,\n    session: session,\n  },\n}];"
+      }
+    },
+    {
+      "id": "21660303-89fe-4978-a12b-3757f548c15f",
+      "name": "IF Envelope Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{$json.valid}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0ee8703c-77a0-4c53-a943-0926c0a86a5a",
+      "name": "Respond Invalid Envelope",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        680,
+        100
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"workflow_request_id\": $json.workflow_request_id || null, \"model_request_id\": null, \"status\": \"FAILED\", \"decision\": null, \"priority\": null, \"requires_human_approval\": false, \"notification_status\": \"NOT_ATTEMPTED\", \"approval_status\": \"NOT_REQUIRED\", \"error\": {\"code\": \"INVALID_ENVELOPE\", \"message\": $json.errors.join('; ')} } }}",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    },
+    {
+      "id": "8733cc1d-8f44-46b9-82fc-2bac21ac7274",
+      "name": "Duplicate Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        400
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const MAX_ENTRIES = 500;\nconst TTL_MS = 24 * 60 * 60 * 1000; // 24h bound, documented in docs/n8n-workflow.md\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.seenRequestIds) {\n  staticData.seenRequestIds = {};\n}\n\nconst now = Date.now();\nconst seen = staticData.seenRequestIds;\n\n// Evict expired entries first (bounded TTL, not unbounded growth).\nfor (const key of Object.keys(seen)) {\n  if (now - seen[key] > TTL_MS) {\n    delete seen[key];\n  }\n}\n\nconst input = $input.first().json;\nconst id = input.workflow_request_id;\nconst isDuplicate = Object.prototype.hasOwnProperty.call(seen, id);\n\nif (!isDuplicate) {\n  seen[id] = now;\n  // Bound total memory: drop the oldest entries once over the cap.\n  const keys = Object.keys(seen);\n  if (keys.length > MAX_ENTRIES) {\n    const sorted = keys.sort((a, b) => seen[a] - seen[b]);\n    const toDrop = sorted.slice(0, keys.length - MAX_ENTRIES);\n    for (const k of toDrop) delete seen[k];\n  }\n}\n\nreturn [{\n  json: {\n    isDuplicate,\n    workflow_request_id: input.workflow_request_id,\n    session: input.session,\n  },\n}];"
+      }
+    },
+    {
+      "id": "94979b32-ad9d-4828-b74e-69ff3257da0d",
+      "name": "IF Duplicate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        900,
+        400
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{$json.isDuplicate}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0d2bdea2-29db-4488-bb4f-70fa9513dbc8",
+      "name": "Respond Duplicate",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        250
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"workflow_request_id\": $json.workflow_request_id, \"model_request_id\": null, \"status\": \"DUPLICATE\", \"decision\": null, \"priority\": null, \"requires_human_approval\": false, \"notification_status\": \"NOT_ATTEMPTED\", \"approval_status\": \"NOT_REQUIRED\", \"error\": {\"code\": \"DUPLICATE_REQUEST\", \"message\": \"workflow_request_id already processed\"} } }}",
+        "options": {
+          "responseCode": 409
+        }
+      }
+    },
+    {
+      "id": "41523213-d383-47c5-85a5-9f948e19fbb1",
+      "name": "Call FastAPI Route",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        450
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FASTAPI_BASE_URL }}/route",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.session }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
+    },
+    {
+      "id": "aa6e94ef-2ad8-48ac-9202-1d8520476529",
+      "name": "Check Route Call Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        450
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const item = $input.first().json;\nconst hasError = item.error !== undefined && item.error !== null;\nreturn [{\n  json: {\n    ok: !hasError,\n    error: hasError ? item.error : null,\n    response: hasError ? null : item,\n  },\n}];"
+      }
+    },
+    {
+      "id": "1092426c-2755-4ec9-8f67-f15c6f2e8eb7",
+      "name": "IF Route Call Failed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1560,
+        450
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{$json.ok}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "44a248a9-f434-407a-aee6-7dd785e8906d",
+      "name": "Build Automation Fallback (API Error)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        350
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const input = $('Duplicate Check').item.json;\nconst routeResult = $input.first().json;\nconst errMsg = String((routeResult.error && routeResult.error.message) || 'API call failed').slice(0, 300);\n\nreturn [{\n  json: {\n    workflow_request_id: input.workflow_request_id,\n    model_request_id: null,\n    decision: 'SYSTEM_FALLBACK',\n    priority: 'HIGH',\n    allowed_action: 'ADD_TO_REVIEW_QUEUE',\n    requires_human_approval: true,\n    reason_codes: ['AGENT_UNAVAILABLE'],\n    explanation: 'Automation could not reach the prediction/decision API: ' + errMsg,\n    agent_version: null,\n    schema_version: null,\n    origin: 'automation_error',\n  },\n}];"
+      }
+    },
+    {
+      "id": "cd8119a7-0863-47ef-b5a2-c1e93a943152",
+      "name": "Validate Decision Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        550
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const required = [\"request_id\", \"decision\", \"priority\", \"allowed_action\", \"requires_human_approval\", \"reason_codes\", \"explanation\", \"agent_version\", \"schema_version\"];\nconst validDecisions = [\"LOG_ONLY\", \"PRIORITY_REVIEW\", \"HUMAN_REVIEW\", \"SYSTEM_FALLBACK\"];\nconst validPriorities = [\"LOW\", \"MEDIUM\", \"HIGH\"];\nconst validActions = [\"ADD_TO_LOG\", \"ADD_TO_REVIEW_QUEUE_PRIORITY\", \"ADD_TO_REVIEW_QUEUE\"];\nconst actionForDecision = {\"LOG_ONLY\": \"ADD_TO_LOG\", \"PRIORITY_REVIEW\": \"ADD_TO_REVIEW_QUEUE_PRIORITY\", \"HUMAN_REVIEW\": \"ADD_TO_REVIEW_QUEUE\"};\n\nconst routeResult = $input.first().json;\nconst resp = routeResult.response || {};\nconst errors = [];\n\nfor (const field of required) {\n  if (!(field in resp)) errors.push('missing field: ' + field);\n}\n\nconst decision = resp.decision;\n// n8n never accepts SYSTEM_FALLBACK as if it were a real API decision --\n// FastAPI's own agent never emits it as a *fresh* success case; a\n// SYSTEM_FALLBACK arriving here is the agent's OWN deterministic fallback,\n// which is a legitimate, already-safe decision and passes through like any\n// other value in validDecisions. What must never happen is an invented\n// value outside this closed set.\nif (decision !== undefined && !validDecisions.includes(decision)) {\n  errors.push('unknown decision: ' + decision);\n}\nif (resp.priority !== undefined && !validPriorities.includes(resp.priority)) {\n  errors.push('unknown priority: ' + resp.priority);\n}\nif (resp.allowed_action !== undefined && !validActions.includes(resp.allowed_action)) {\n  errors.push('unknown allowed_action: ' + resp.allowed_action);\n}\nif (decision && actionForDecision[decision] && resp.allowed_action !== actionForDecision[decision]) {\n  errors.push('decision/allowed_action mismatch: ' + decision + ' requires ' + actionForDecision[decision]);\n}\nif (resp.requires_human_approval !== undefined && typeof resp.requires_human_approval !== 'boolean') {\n  errors.push('requires_human_approval must be boolean');\n}\nif (Array.isArray(resp.reason_codes) && resp.reason_codes.length === 0) {\n  errors.push('reason_codes must not be empty');\n}\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    response: resp,\n  },\n}];"
+      }
+    },
+    {
+      "id": "d92b17dd-96df-4f2b-b3a9-2f83f75789b4",
+      "name": "IF Decision Response Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2000,
+        550
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{$json.valid}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "7b55c339-dfb5-454c-97b6-cf24595ce711",
+      "name": "Build Automation Fallback (Invalid Response)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        450
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const input = $('Duplicate Check').item.json;\nconst validation = $input.first().json;\n\nreturn [{\n  json: {\n    workflow_request_id: input.workflow_request_id,\n    model_request_id: (validation.response && validation.response.request_id) || null,\n    decision: 'SYSTEM_FALLBACK',\n    priority: 'HIGH',\n    allowed_action: 'ADD_TO_REVIEW_QUEUE',\n    requires_human_approval: true,\n    reason_codes: ['AGENT_OUTPUT_INVALID'],\n    explanation: 'Automation rejected an invalid DecisionResponse: ' + validation.errors.join('; ').slice(0, 250),\n    agent_version: (validation.response && validation.response.agent_version) || null,\n    schema_version: (validation.response && validation.response.schema_version) || null,\n    origin: 'automation_error',\n  },\n}];"
+      }
+    },
+    {
+      "id": "7ad4f791-aedb-4dd1-b18b-aedf32416243",
+      "name": "Normalize Routing Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        650
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const input = $('Duplicate Check').item.json;\nconst resp = $input.first().json.response;\n\nreturn [{\n  json: {\n    workflow_request_id: input.workflow_request_id,\n    model_request_id: resp.request_id,\n    decision: resp.decision,\n    priority: resp.priority,\n    allowed_action: resp.allowed_action,\n    requires_human_approval: resp.requires_human_approval,\n    reason_codes: resp.reason_codes,\n    explanation: resp.explanation,\n    agent_version: resp.agent_version,\n    schema_version: resp.schema_version,\n    origin: 'api',\n  },\n}];"
+      }
+    },
+    {
+      "id": "7d0b5549-fa93-40ae-85de-21622fef1382",
+      "name": "Routing Record Ready",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2440,
+        550
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "528769cd-154b-4e32-9ced-7769830c6dc1",
+      "name": "Switch on Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2660,
+        550
+      ],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.decision}}",
+                    "rightValue": "LOG_ONLY",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "LOG_ONLY"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.decision}}",
+                    "rightValue": "PRIORITY_REVIEW",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "PRIORITY_REVIEW"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.decision}}",
+                    "rightValue": "HUMAN_REVIEW",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "HUMAN_REVIEW"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.decision}}",
+                    "rightValue": "SYSTEM_FALLBACK",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "SYSTEM_FALLBACK"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Unexpected"
+        }
+      }
+    },
+    {
+      "id": "2f1f0320-6d52-4298-83e7-671f80411507",
+      "name": "Set Log Only Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        150
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const record = $input.first().json;\nreturn [{\n  json: {\n    ...record,\n    status: 'COMPLETED',\n    notification_status: 'NOT_ATTEMPTED',\n    approval_status: 'NOT_REQUIRED',\n  },\n}];"
+      }
+    },
+    {
+      "id": "6a35e65c-cc00-412f-8fd7-eb4f897ff3e3",
+      "name": "Respond Log Only",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        3120,
+        150
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "1d03f330-79be-48ea-9714-3be8af065065",
+      "name": "Send Priority Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2900,
+        320
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_NOTIFY_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"text\": (\"[\" + \"PRIORITY_REVIEW\" + \"] \" + $json.decision + \" -- \" + $json.explanation), \"workflow_request_id\": $json.workflow_request_id, \"model_request_id\": $json.model_request_id, \"decision\": $json.decision, \"priority\": $json.priority, \"allowed_action\": $json.allowed_action, \"requires_human_approval\": $json.requires_human_approval, \"reason_codes\": $json.reason_codes, \"approval_resume_url\": $execution.resumeUrl, \"timestamp\": $now.toISO() } }}",
+        "options": {
+          "timeout": 8000
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
+    },
+    {
+      "id": "e9b7f153-041e-4c7e-8f9e-e1f0a45bd657",
+      "name": "Build Priority Notification Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        320
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const record = $('Routing Record Ready').item.json;\nconst httpResult = $input.first().json;\nconst failed = httpResult.error !== undefined && httpResult.error !== null;\n\nreturn [{\n  json: {\n    ...record,\n    severity: 'PRIORITY_REVIEW',\n    notification_status: failed ? 'FAILED' : 'SENT',\n  },\n}];"
+      }
+    },
+    {
+      "id": "57ad6ff9-e64a-4c2e-857f-ef9ef66146a8",
+      "name": "IF Priority Requires Approval",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3340,
+        320
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{$json.requires_human_approval}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "fe505a6a-c7f1-4a45-8547-facbea4e1cd4",
+      "name": "Respond Priority Completed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        3560,
+        220
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {...$json, status: 'COMPLETED', approval_status: 'NOT_REQUIRED'} }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "b1fc60fc-f324-4642-9eae-fe748e862a8d",
+      "name": "Send Review Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2900,
+        500
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_NOTIFY_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"text\": (\"[\" + \"HUMAN_REVIEW\" + \"] \" + $json.decision + \" -- \" + $json.explanation), \"workflow_request_id\": $json.workflow_request_id, \"model_request_id\": $json.model_request_id, \"decision\": $json.decision, \"priority\": $json.priority, \"allowed_action\": $json.allowed_action, \"requires_human_approval\": $json.requires_human_approval, \"reason_codes\": $json.reason_codes, \"approval_resume_url\": $execution.resumeUrl, \"timestamp\": $now.toISO() } }}",
+        "options": {
+          "timeout": 8000
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
+    },
+    {
+      "id": "87601c49-2de7-47c9-b3fe-152a71ad7a44",
+      "name": "Build Review Notification Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        500
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const record = $('Routing Record Ready').item.json;\nconst httpResult = $input.first().json;\nconst failed = httpResult.error !== undefined && httpResult.error !== null;\n\nreturn [{\n  json: {\n    ...record,\n    severity: 'HUMAN_REVIEW',\n    notification_status: failed ? 'FAILED' : 'SENT',\n  },\n}];"
+      }
+    },
+    {
+      "id": "dcb4bbee-4c83-4d45-a4f3-62171b535554",
+      "name": "Coerce Unexpected To Fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        750
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const input = $input.first().json;\nreturn [{\n  json: {\n    workflow_request_id: input.workflow_request_id,\n    model_request_id: input.model_request_id || null,\n    decision: 'SYSTEM_FALLBACK',\n    priority: 'HIGH',\n    allowed_action: 'ADD_TO_REVIEW_QUEUE',\n    requires_human_approval: true,\n    reason_codes: ['AGENT_OUTPUT_INVALID'],\n    explanation: 'Automation received an unrecognized decision value from a validated response.',\n    agent_version: input.agent_version || null,\n    schema_version: input.schema_version || null,\n    origin: 'automation_error',\n  },\n}];"
+      }
+    },
+    {
+      "id": "91ea2114-701a-4864-b92f-d2ff6d3f7c2a",
+      "name": "Send Fallback Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3120,
+        680
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_NOTIFY_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"text\": (\"[\" + \"SYSTEM_FALLBACK\" + \"] \" + $json.decision + \" -- \" + $json.explanation), \"workflow_request_id\": $json.workflow_request_id, \"model_request_id\": $json.model_request_id, \"decision\": $json.decision, \"priority\": $json.priority, \"allowed_action\": $json.allowed_action, \"requires_human_approval\": $json.requires_human_approval, \"reason_codes\": $json.reason_codes, \"approval_resume_url\": $execution.resumeUrl, \"timestamp\": $now.toISO() } }}",
+        "options": {
+          "timeout": 8000
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
+    },
+    {
+      "id": "b60bd765-0f04-42b5-9aee-d185ee97362a",
+      "name": "Build Fallback Notification Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3340,
+        680
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const record = $('Routing Record Ready').item.json;\nconst httpResult = $input.first().json;\nconst failed = httpResult.error !== undefined && httpResult.error !== null;\n\nreturn [{\n  json: {\n    ...record,\n    severity: 'SYSTEM_FALLBACK',\n    notification_status: failed ? 'FAILED' : 'SENT',\n  },\n}];"
+      }
+    },
+    {
+      "id": "9b149782-7461-4e00-9f2c-d796db7897e0",
+      "name": "Respond Pending Human Review",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        3560,
+        500
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {...$json, status: 'PENDING_HUMAN_REVIEW', notification_status: $json.notification_status, approval_status: 'PENDING'} }}",
+        "options": {
+          "responseCode": 202
+        }
+      }
+    },
+    {
+      "id": "ebba60d5-2574-471b-97f1-a65327663679",
+      "name": "Wait For Human Approval",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3780,
+        500
+      ],
+      "parameters": {
+        "resume": "webhook",
+        "httpMethod": "POST",
+        "incomingAuthentication": "none",
+        "responseMode": "onReceived",
+        "responseCode": 200,
+        "limitWaitTime": true,
+        "limitType": "afterTimeInterval",
+        "resumeAmount": 30,
+        "resumeUnit": "minutes",
+        "options": {}
+      },
+      "webhookId": "6d240da9-b194-4e9e-830e-202b9b764db9"
+    },
+    {
+      "id": "e638aee7-a4b9-44a9-abb0-2fc2cd4d5cc8",
+      "name": "Evaluate Approval Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4000,
+        500
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const record = $('Routing Record Ready').item.json;\nconst resumeData = $input.first().json;\n\nconst body = (resumeData && resumeData.body) ? resumeData.body : resumeData;\nconst action = body && typeof body.action === 'string' ? body.action.toLowerCase() : undefined;\nconst note = body && typeof body.note === 'string' ? body.note.slice(0, 500) : '';\n\nlet approvalStatus;\nif (action === 'approve') approvalStatus = 'APPROVED';\nelse if (action === 'reject') approvalStatus = 'REJECTED';\nelse approvalStatus = 'EXPIRED';\n\nreturn [{\n  json: {\n    ...record,\n    approval_status: approvalStatus,\n    reviewer_note: note,\n  },\n}];"
+      }
+    },
+    {
+      "id": "5a7ab64f-d03e-4f7d-9c66-2582a0277aec",
+      "name": "Send Final Outcome Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4220,
+        500
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_NOTIFY_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"text\": (\"Approval outcome for \" + $json.workflow_request_id + \": \" + $json.approval_status), \"workflow_request_id\": $json.workflow_request_id, \"model_request_id\": $json.model_request_id, \"decision\": $json.decision, \"approval_status\": $json.approval_status, \"reviewer_note\": $json.reviewer_note, \"timestamp\": $now.toISO() } }}",
+        "options": {
+          "timeout": 8000
+        }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
+    }
+  ],
+  "connections": {
+    "POST Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Envelope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Envelope": {
+      "main": [
+        [
+          {
+            "node": "IF Envelope Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Envelope Valid": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Invalid Envelope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Check": {
+      "main": [
+        [
+          {
+            "node": "IF Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Respond Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call FastAPI Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call FastAPI Route": {
+      "main": [
+        [
+          {
+            "node": "Check Route Call Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Route Call Result": {
+      "main": [
+        [
+          {
+            "node": "IF Route Call Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Route Call Failed": {
+      "main": [
+        [
+          {
+            "node": "Build Automation Fallback (API Error)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate Decision Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Decision Response": {
+      "main": [
+        [
+          {
+            "node": "IF Decision Response Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Decision Response Valid": {
+      "main": [
+        [
+          {
+            "node": "Normalize Routing Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Automation Fallback (Invalid Response)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Automation Fallback (API Error)": {
+      "main": [
+        [
+          {
+            "node": "Routing Record Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Automation Fallback (Invalid Response)": {
+      "main": [
+        [
+          {
+            "node": "Routing Record Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Routing Record": {
+      "main": [
+        [
+          {
+            "node": "Routing Record Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Routing Record Ready": {
+      "main": [
+        [
+          {
+            "node": "Switch on Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch on Decision": {
+      "main": [
+        [
+          {
+            "node": "Set Log Only Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Priority Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Review Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Fallback Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Coerce Unexpected To Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Log Only Complete": {
+      "main": [
+        [
+          {
+            "node": "Respond Log Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Priority Notification": {
+      "main": [
+        [
+          {
+            "node": "Build Priority Notification Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Priority Notification Result": {
+      "main": [
+        [
+          {
+            "node": "IF Priority Requires Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Priority Requires Approval": {
+      "main": [
+        [
+          {
+            "node": "Respond Pending Human Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Priority Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Review Notification": {
+      "main": [
+        [
+          {
+            "node": "Build Review Notification Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coerce Unexpected To Fallback": {
+      "main": [
+        [
+          {
+            "node": "Send Fallback Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Fallback Notification": {
+      "main": [
+        [
+          {
+            "node": "Build Fallback Notification Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Review Notification Result": {
+      "main": [
+        [
+          {
+            "node": "Respond Pending Human Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Fallback Notification Result": {
+      "main": [
+        [
+          {
+            "node": "Respond Pending Human Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Pending Human Review": {
+      "main": [
+        [
+          {
+            "node": "Wait For Human Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait For Human Approval": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Approval Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Approval Result": {
+      "main": [
+        [
+          {
+            "node": "Send Final Outcome Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

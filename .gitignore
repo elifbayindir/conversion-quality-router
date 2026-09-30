@@ -35,6 +35,9 @@ artifacts/reports/
 logs/
 *.log
 
+# n8n local runtime (user account, credential DB, execution DB, cache)
+automation/.n8n-runtime/
+
 # Editors and OS
 .DS_Store
 .vscode/settings.json

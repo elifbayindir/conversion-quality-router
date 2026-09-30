@@ -1,0 +1,36 @@
+{
+  "description": "Mock /route (TrafficType=9) returns a structurally-valid-looking DecisionResponse with decision=LOG_ONLY but allowed_action=ADD_TO_REVIEW_QUEUE -- an inconsistent combination the P5 policy forbids. n8n's own Validate Decision Response must reject it independently of the real API (which would never produce this).",
+  "mock_route_selector": {
+    "TrafficType": 9
+  },
+  "input": {
+    "workflow_request_id": "fixture-inconsistent-001",
+    "session": {
+      "Administrative": 0,
+      "Administrative_Duration": 0.0,
+      "Informational": 0,
+      "Informational_Duration": 0.0,
+      "ProductRelated": 1,
+      "ProductRelated_Duration": 10.0,
+      "BounceRates": 0.1,
+      "ExitRates": 0.1,
+      "SpecialDay": 0.0,
+      "Month": "Feb",
+      "OperatingSystems": 1,
+      "Browser": 1,
+      "Region": 1,
+      "TrafficType": 9,
+      "VisitorType": "Returning_Visitor",
+      "Weekend": false
+    }
+  },
+  "expected_http_status": 202,
+  "expected_response_shape": {
+    "decision": "SYSTEM_FALLBACK",
+    "origin": "automation_error",
+    "reason_codes": [
+      "AGENT_OUTPUT_INVALID"
+    ]
+  },
+  "observed_result": "Verified: 202, origin=automation_error, explanation = 'decision/allowed_action mismatch: LOG_ONLY requires ADD_TO_LOG'."
+}
