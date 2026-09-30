@@ -1,0 +1,33 @@
+{
+  "description": "T702 acceptance matrix scenario 4 (invalid agent output). Any valid validation-split session works here (reusing row_index=16's session -- same as real_model_log_only.json -- under a new workflow_request_id), because scripts/qa_fake_agent_api_server.py --mode invalid always returns unusable, non-JSON content regardless of the real prediction it receives. This exercises the REAL agent client's bounded retry (conversion_router.agent.client.get_decision: 2 attempts) then its REAL deterministic SYSTEM_FALLBACK -- the API itself returns a clean 200 SYSTEM_FALLBACK response (never a 5xx), which is a different code path than n8n's own automation-side timeout/HTTP-error fallback (see api_timeout.json / api_422.json / api_503.json).",
+  "input": {
+    "workflow_request_id": "qa-matrix-invalid-agent-001",
+    "session": {
+      "Administrative": 0,
+      "Administrative_Duration": 0.0,
+      "Informational": 0,
+      "Informational_Duration": 0.0,
+      "ProductRelated": 1,
+      "ProductRelated_Duration": 0.0,
+      "BounceRates": 0.2,
+      "ExitRates": 0.2,
+      "SpecialDay": 0.0,
+      "Month": "Feb",
+      "OperatingSystems": 1,
+      "Browser": 1,
+      "Region": 4,
+      "TrafficType": 3,
+      "VisitorType": "Returning_Visitor",
+      "Weekend": false
+    }
+  },
+  "expected_http_status": 202,
+  "expected_response_shape": {
+    "decision": "SYSTEM_FALLBACK",
+    "allowed_action": "ADD_TO_REVIEW_QUEUE",
+    "requires_human_approval": true,
+    "status": "PENDING_HUMAN_REVIEW",
+    "origin": "api"
+  },
+  "observed_result": "Verified via scripts/run_acceptance_matrix.py against the real running n8n instance: 202 PENDING_HUMAN_REVIEW, decision=SYSTEM_FALLBACK, reason_codes=[AGENT_OUTPUT_INVALID], origin=api, resolved with an automated 'approve' resume call -> 200. See docs/qa-report.md and docs/qa_matrix_results.json."
+}

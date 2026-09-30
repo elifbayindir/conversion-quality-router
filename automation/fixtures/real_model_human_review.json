@@ -1,0 +1,34 @@
+{
+  "description": "T702 acceptance matrix scenario 3 (near-threshold / uncertain). Real validation-split session (row_index=214, validation_index, never the test set). Run against the REAL FastAPI /route endpoint (real model artifacts, real preprocessing/calibration) with scripts/qa_fake_agent_api_server.py --mode rule_based standing in for Anthropic (deterministic, no network call). Real model reproduces calibrated_proba=0.1111 (see data/processed/mlp_validation_predictions.csv), within the uncertainty_band of the threshold (0.12 +/- 0.05), so uncertain=true, which deterministically forces HUMAN_REVIEW per the agent's cross-field validator regardless of what the provider proposes.",
+  "input": {
+    "workflow_request_id": "qa-matrix-human-review-001",
+    "session": {
+      "Administrative": 2,
+      "Administrative_Duration": 2.0,
+      "Informational": 3,
+      "Informational_Duration": 261.0,
+      "ProductRelated": 10,
+      "ProductRelated_Duration": 281.0,
+      "BounceRates": 0.0,
+      "ExitRates": 0.042857143,
+      "SpecialDay": 0.0,
+      "Month": "Mar",
+      "OperatingSystems": 2,
+      "Browser": 2,
+      "Region": 1,
+      "TrafficType": 2,
+      "VisitorType": "Returning_Visitor",
+      "Weekend": false
+    }
+  },
+  "expected_http_status": 202,
+  "expected_response_shape": {
+    "decision": "HUMAN_REVIEW",
+    "allowed_action": "ADD_TO_REVIEW_QUEUE",
+    "requires_human_approval": true,
+    "status": "PENDING_HUMAN_REVIEW",
+    "notification_status": "SENT",
+    "approval_status": "PENDING"
+  },
+  "observed_result": "Verified via scripts/run_acceptance_matrix.py against the real running n8n instance: 202 PENDING_HUMAN_REVIEW, decision=HUMAN_REVIEW, origin=api, resolved with an automated 'approve' resume call -> 200. See docs/qa-report.md and docs/qa_matrix_results.json."
+}

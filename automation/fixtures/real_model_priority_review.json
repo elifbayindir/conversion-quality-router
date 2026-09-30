@@ -1,0 +1,34 @@
+{
+  "description": "T702 acceptance matrix scenario 2 (high probability / high confidence). Real validation-split session (row_index=6797, validation_index, never the test set). Run against the REAL FastAPI /route endpoint (real model artifacts, real preprocessing/calibration) with scripts/qa_fake_agent_api_server.py --mode rule_based standing in for Anthropic (deterministic, no network call). Real model reproduces calibrated_proba=0.6667 (see data/processed/mlp_validation_predictions.csv), predicted_class=likely_to_convert, uncertain=false.",
+  "input": {
+    "workflow_request_id": "qa-matrix-priority-review-001",
+    "session": {
+      "Administrative": 4,
+      "Administrative_Duration": 53.4,
+      "Informational": 2,
+      "Informational_Duration": 113.8,
+      "ProductRelated": 256,
+      "ProductRelated_Duration": 13453.25103,
+      "BounceRates": 0.0,
+      "ExitRates": 0.003240964,
+      "SpecialDay": 0.0,
+      "Month": "Nov",
+      "OperatingSystems": 2,
+      "Browser": 2,
+      "Region": 1,
+      "TrafficType": 2,
+      "VisitorType": "Returning_Visitor",
+      "Weekend": false
+    }
+  },
+  "expected_http_status": 200,
+  "expected_response_shape": {
+    "decision": "PRIORITY_REVIEW",
+    "allowed_action": "ADD_TO_REVIEW_QUEUE_PRIORITY",
+    "requires_human_approval": false,
+    "status": "COMPLETED",
+    "notification_status": "SENT",
+    "approval_status": "NOT_REQUIRED"
+  },
+  "observed_result": "Verified via scripts/run_acceptance_matrix.py against the real running n8n instance: 200, decision=PRIORITY_REVIEW, status=COMPLETED, notification_status=SENT (mock receiver), approval_status=NOT_REQUIRED, origin=api. See docs/qa-report.md and docs/qa_matrix_results.json."
+}

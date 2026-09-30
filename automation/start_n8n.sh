@@ -32,15 +32,11 @@ export FASTAPI_BASE_URL="${FASTAPI_BASE_URL:-http://127.0.0.1:8000}"
 # present in the calling environment (e.g. N8N_NOTIFY_WEBHOOK_URL=http://
 # 127.0.0.1:8090/ for mock-only testing) always wins over .env -- this must
 # NOT unconditionally source-and-override, or repeated test runs would keep
-# hitting the real webhook.
-if [ -f "$PROJECT_ROOT/.env" ]; then
-  while IFS='=' read -r key value; do
-    case "$key" in ''|'#'*) continue ;; esac
-    if [ -z "${!key:-}" ]; then
-      export "$key=$value"
-    fi
-  done < "$PROJECT_ROOT/.env"
-fi
+# hitting the real webhook. Shared, regression-tested loader -- see
+# scripts/load_env_with_precedence.sh and tests/unit/test_env_precedence.py.
+# shellcheck disable=SC1091
+source "$PROJECT_ROOT/scripts/load_env_with_precedence.sh"
+load_env_with_precedence "$PROJECT_ROOT/.env"
 
 mkdir -p "$N8N_USER_FOLDER"
 

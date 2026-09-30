@@ -1,0 +1,172 @@
+{
+  "generated_at": "2026-09-30T12:27:58.248704+00:00",
+  "total_scenarios": 5,
+  "passed": 5,
+  "failed": 0,
+  "results": [
+    {
+      "scenario": "1_low_probability_high_confidence",
+      "fixture": "real_model_log_only.json",
+      "expected_decision": "LOG_ONLY",
+      "http_status": 200,
+      "elapsed_seconds": 0.834,
+      "response": {
+        "workflow_request_id": "qa-matrix-log-only-001-20260930122708",
+        "model_request_id": "req_20260930122728_2754eb26",
+        "decision": "LOG_ONLY",
+        "priority": "LOW",
+        "allowed_action": "ADD_TO_LOG",
+        "requires_human_approval": false,
+        "reason_codes": [
+          "HIGH_CONFIDENCE_NEGATIVE"
+        ],
+        "explanation": "Purchase probability is comfortably below the decision threshold.",
+        "agent_version": "1.0.0",
+        "schema_version": "1.0.0",
+        "origin": "api",
+        "status": "COMPLETED",
+        "notification_status": "NOT_ATTEMPTED",
+        "approval_status": "NOT_REQUIRED"
+      },
+      "pass": true
+    },
+    {
+      "scenario": "2_high_probability_high_confidence",
+      "fixture": "real_model_priority_review.json",
+      "expected_decision": "PRIORITY_REVIEW",
+      "http_status": 200,
+      "elapsed_seconds": 0.135,
+      "response": {
+        "workflow_request_id": "qa-matrix-priority-review-001-20260930122708",
+        "model_request_id": "req_20260930122728_0227a3b1",
+        "decision": "PRIORITY_REVIEW",
+        "priority": "HIGH",
+        "allowed_action": "ADD_TO_REVIEW_QUEUE_PRIORITY",
+        "requires_human_approval": false,
+        "reason_codes": [
+          "HIGH_CONFIDENCE_POSITIVE"
+        ],
+        "explanation": "Purchase probability is comfortably above the decision threshold.",
+        "agent_version": "1.0.0",
+        "schema_version": "1.0.0",
+        "origin": "api",
+        "severity": "PRIORITY_REVIEW",
+        "notification_status": "SENT",
+        "status": "COMPLETED",
+        "approval_status": "NOT_REQUIRED"
+      },
+      "pass": true
+    },
+    {
+      "scenario": "3_near_threshold_uncertain",
+      "fixture": "real_model_human_review.json",
+      "expected_decision": "HUMAN_REVIEW",
+      "http_status": 202,
+      "elapsed_seconds": 0.161,
+      "response": {
+        "workflow_request_id": "qa-matrix-human-review-001-20260930122708",
+        "model_request_id": "req_20260930122728_2584381f",
+        "decision": "HUMAN_REVIEW",
+        "priority": "MEDIUM",
+        "allowed_action": "ADD_TO_REVIEW_QUEUE",
+        "requires_human_approval": true,
+        "reason_codes": [
+          "MODEL_UNCERTAIN"
+        ],
+        "explanation": "Prediction is within the uncertainty band of the threshold.",
+        "agent_version": "1.0.0",
+        "schema_version": "1.0.0",
+        "origin": "api",
+        "severity": "HUMAN_REVIEW",
+        "notification_status": "SENT",
+        "status": "PENDING_HUMAN_REVIEW",
+        "approval_status": "PENDING"
+      },
+      "approval": {
+        "resolved": true,
+        "action": "approve",
+        "resume_http_status": 200,
+        "resume_response": {
+          "message": "Workflow was started"
+        },
+        "resume_elapsed_seconds": 0.055,
+        "resume_attempts": 2
+      },
+      "pass": true
+    },
+    {
+      "scenario": "4_invalid_agent_output",
+      "fixture": "real_model_invalid_agent_fallback.json",
+      "expected_decision": "SYSTEM_FALLBACK",
+      "http_status": 202,
+      "elapsed_seconds": 0.124,
+      "response": {
+        "workflow_request_id": "qa-matrix-invalid-agent-001-20260930122708",
+        "model_request_id": "req_20260930122734_0e600de4",
+        "decision": "SYSTEM_FALLBACK",
+        "priority": "HIGH",
+        "allowed_action": "ADD_TO_REVIEW_QUEUE",
+        "requires_human_approval": true,
+        "reason_codes": [
+          "AGENT_OUTPUT_INVALID"
+        ],
+        "explanation": "Agent output could not be validated; routed to human review.",
+        "agent_version": "1.0.0",
+        "schema_version": "1.0.0",
+        "origin": "api",
+        "severity": "SYSTEM_FALLBACK",
+        "notification_status": "SENT",
+        "status": "PENDING_HUMAN_REVIEW",
+        "approval_status": "PENDING"
+      },
+      "approval": {
+        "resolved": true,
+        "action": "approve",
+        "resume_http_status": 200,
+        "resume_response": {
+          "message": "Workflow was started"
+        },
+        "resume_elapsed_seconds": 0.036,
+        "resume_attempts": 2
+      },
+      "pass": true
+    },
+    {
+      "scenario": "5_api_timeout_bounded_retry",
+      "fixture": "api_timeout.json",
+      "expected_decision": "SYSTEM_FALLBACK",
+      "http_status": 202,
+      "elapsed_seconds": 21.158,
+      "response": {
+        "workflow_request_id": "fixture-api-timeout-001-20260930122708",
+        "model_request_id": null,
+        "decision": "SYSTEM_FALLBACK",
+        "priority": "HIGH",
+        "allowed_action": "ADD_TO_REVIEW_QUEUE",
+        "requires_human_approval": true,
+        "reason_codes": [
+          "AGENT_UNAVAILABLE"
+        ],
+        "explanation": "Automation could not reach the prediction/decision API: timeout of 10000ms exceeded",
+        "agent_version": null,
+        "schema_version": null,
+        "origin": "automation_error",
+        "severity": "SYSTEM_FALLBACK",
+        "notification_status": "SENT",
+        "status": "PENDING_HUMAN_REVIEW",
+        "approval_status": "PENDING"
+      },
+      "approval": {
+        "resolved": true,
+        "action": "approve",
+        "resume_http_status": 200,
+        "resume_response": {
+          "message": "Workflow was started"
+        },
+        "resume_elapsed_seconds": 0.045,
+        "resume_attempts": 2
+      },
+      "pass": true
+    }
+  ]
+}
