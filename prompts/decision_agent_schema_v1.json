@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "AllowedAction": {
+      "enum": [
+        "ADD_TO_LOG",
+        "ADD_TO_REVIEW_QUEUE_PRIORITY",
+        "ADD_TO_REVIEW_QUEUE"
+      ],
+      "title": "AllowedAction",
+      "type": "string"
+    },
+    "LLMDecision": {
+      "enum": [
+        "LOG_ONLY",
+        "PRIORITY_REVIEW",
+        "HUMAN_REVIEW"
+      ],
+      "title": "LLMDecision",
+      "type": "string"
+    },
+    "LLMReasonCode": {
+      "enum": [
+        "MODEL_UNCERTAIN",
+        "NEAR_DECISION_THRESHOLD",
+        "HIGH_CONFIDENCE_POSITIVE",
+        "HIGH_CONFIDENCE_NEGATIVE"
+      ],
+      "title": "LLMReasonCode",
+      "type": "string"
+    },
+    "Priority": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "title": "Priority",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "allowed_action": {
+      "$ref": "#/$defs/AllowedAction"
+    },
+    "decision": {
+      "$ref": "#/$defs/LLMDecision"
+    },
+    "explanation": {
+      "maxLength": 280,
+      "title": "Explanation",
+      "type": "string"
+    },
+    "priority": {
+      "$ref": "#/$defs/Priority"
+    },
+    "reason_codes": {
+      "items": {
+        "$ref": "#/$defs/LLMReasonCode"
+      },
+      "minItems": 1,
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "requires_human_approval": {
+      "title": "Requires Human Approval",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "decision",
+    "priority",
+    "allowed_action",
+    "requires_human_approval",
+    "reason_codes",
+    "explanation"
+  ],
+  "title": "LLMDecisionCore",
+  "type": "object"
+}

@@ -118,6 +118,10 @@ Respond with the JSON object only, matching the provided JSON Schema
 exactly. No other text, in any language, anywhere in your response.
 ```
 
+## JSON Schema artifact
+
+The closed output schema is exported as [`decision_agent_schema_v1.json`](decision_agent_schema_v1.json), generated from `LLMDecisionCore.model_json_schema()` (the runtime source of truth in `src/conversion_router/schemas.py`). Run `scripts/export_agent_schema.py --check` to detect drift between the committed file and the live schema.
+
 ## Prompt-injection note
 
 The only untrusted-shaped content the model ever sees is the fixed JSON
