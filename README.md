@@ -1,28 +1,25 @@
 # Conversion Quality Router
 
-**An uncertainty-aware decision-support prototype that triages e-commerce sessions into priority review, human review, or automatic audit logging — so a capacity-constrained analyst knows which sessions to look at first.**
+A local decision-support system for e-commerce session review. It estimates purchase probability, prioritizes strong signals, sends uncertain cases to a person, and logs clear negatives.
 
-Built on a public dataset. Not connected to a live event stream.
+The project uses a public dataset and does not process live customer traffic.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 
----
+![The Evaluate Session result view shows purchase probability, threshold, uncertainty, route, and supporting signals](docs/figures/ui_evaluate_session.png)
 
-![The Evaluate Session result view shows the calibrated purchase probability against the decision threshold and uncertainty band, the routing decision, and supporting signals](docs/figures/ui_evaluate_session.png)
-*A reviewer sees calibrated evidence — probability, threshold, uncertainty band — alongside the routing decision, priority, and supporting signals.*
+*The result view puts the model evidence and the recommended action on one screen.*
 
-## Why this project exists
+## Why it exists
 
-A prediction score alone does not tell a team what to do. A session scored at 28% purchase probability could be a clear positive, an uncertain boundary case, or a confident negative — it depends on the threshold, the model's confidence near that threshold, and the team's capacity.
+A probability alone does not tell an analyst what to do. The same score may need immediate attention, human judgment, or no review at all. This project turns a calibrated probability into one of three routes.
 
-This prototype turns a calibrated probability into an **operational routing decision**:
+- **Priority review:** A strong signal goes to the front of the queue.
+- **Human review:** An uncertain result goes to a person.
+- **Log automatically:** A clear negative is kept for audit without using reviewer time.
 
-- **Priority review** — the model is confident the session is likely to convert; an analyst should look at it first.
-- **Human review** — the model is uncertain; a person must decide.
-- **Log automatically** — the model is confidently negative; no reviewer time is needed.
-
-A constrained decision agent proposes the route. Schema validation and cross-field policy rules enforce it. If anything fails — the model, the agent, or the network — the system falls back to human review, never to silence. Reviewer feedback is recorded in a local append-only store for later human-led policy review. Nothing retrains the model or changes the policy automatically.
+The model makes the prediction. A constrained agent chooses a route from a fixed policy. Schema and policy checks reject inconsistent output. Any model, agent, or network failure goes to human review. Reviewer feedback stays in a local append-only store and never retrains the model automatically.
 
 ## Local quickstart
 
@@ -40,61 +37,45 @@ venv/bin/python scripts/calibrate_mlp.py
 venv/bin/python scripts/finalize_mlp.py
 venv/bin/python scripts/evaluate_test.py
 
-# Start the UI (zero external calls)
+# Start the local UI without external calls
 scripts/start_ui.sh
 ```
 
-Open **http://127.0.0.1:8501** and try:
+Open **http://127.0.0.1:8501** and try the three presets.
 
-1. Select the **strong purchase-signal preset** → see priority review routing.
-2. Switch to the **uncertain preset** → see human review routing.
-3. Try the **weak/auto-log preset** → see automatic logging.
-4. On a routed result, **agree** or **override** the recommendation.
-5. Switch to the **Review Queue** tab to see queued sessions.
-6. Open the **Feedback & Audit** tab to inspect recorded decisions and summary statistics.
+1. **Strong purchase signal** returns priority review.
+2. **Uncertain signal** returns human review.
+3. **Weak signal** returns automatic logging.
+4. Agree with a recommendation or override it with a reason.
+5. Check the queue and feedback tabs.
 
-Stop with `scripts/stop_ui.sh`. For detailed setup and troubleshooting, see [docs/architecture.md](docs/architecture.md).
+Stop the demo with `scripts/stop_ui.sh`. See [docs/architecture.md](docs/architecture.md) for setup details and troubleshooting.
 
 ## Product walkthrough
 
-The UI has three areas:
+### Evaluate a session
 
-### Evaluate a Session
+Basic mode uses readable presets. Advanced mode exposes the model's numeric and categorical inputs. Both modes send the same 16 features to the API.
 
-Enter session features and get a routing decision. Two input modes:
+Model-only evaluation returns the calibrated probability, threshold, uncertainty band, and supporting signals. Full routing also returns the recommended route, priority, and action.
 
-- **Basic** — preset scenarios with human-readable labels (visitor type, session context, engagement level). Under the hood, these map to the 16 deployment-safe features.
-- **Advanced** — direct numeric and categorical inputs matching the model's feature contract, including technical category IDs (operating system, browser, region, traffic source).
+The reviewer can agree or override after a full-routing result. The app saves that response in local SQLite with a structured reason and the relevant version identifiers.
 
-Two evaluation modes:
+### Review queue
 
-- **Model only** — returns the calibrated purchase probability, decision threshold, uncertainty band, and supporting signals. No routing decision.
-- **Full decision routing** — runs the model, then the constrained decision agent, returning the probability *and* the operational route (priority review, human review, or log automatically).
+The queue groups sessions by route and sorts them by priority. It lasts only for the current browser session. Clearing the queue does not affect the feedback database.
 
-The result view shows:
-- The **calibrated purchase probability** as a visual gauge against the **decision threshold** and **uncertainty band**.
-- The routed decision, priority, and action.
-- Supporting signals explaining the prediction context.
+### Feedback and audit
 
-After evaluating a session with full decision routing, a **Reviewer feedback** panel appears below the result. The reviewer can agree with the recommendation or override it with a structured reason. Feedback is recorded in the local append-only SQLite store.
+The feedback tab shows every recorded decision, agreement and override rates, override direction, and common reasons. These records support later human review of the policy. They do not change the model, threshold, or routing rules.
 
-### Review Queue
+![The Feedback and Audit tab shows agreement, overrides, route summaries, and override reasons](docs/figures/ui_feedback_audit.png)
 
-Sessions evaluated in the current browser session appear in a review queue, sorted by priority. Each entry shows the probability, route, and status. This queue is a browser-session-only view — it is not persisted and does not record feedback.
-
-### Feedback & Audit
-
-Displays all feedback recorded in the local append-only SQLite store:
-- A table of every recorded review decision.
-- Summary statistics: agreement rate, override rate, override direction, and most frequent override reasons.
-- This data is **evidence for a person** deciding whether to adjust the threshold, the uncertainty band, or the policy. The system does not act on it automatically.
-
-![The Feedback and Audit tab shows agreement and override rates, overrides by route, and the most frequent override reasons](docs/figures/ui_feedback_audit.png)
-*Local feedback summary: agreement and override rates, overrides by recommended route, and override reasons. These records are entered manually in the local prototype; they are not a user study.*
+*Four local demo reviews illustrate the audit summary. They are not user-study results.*
 
 ## Operational impact
 
-Applied to the frozen test split (n = 1,845 sessions, 286 conversions, 15.5% base rate), the routing policy distributes reviewer attention as follows:
+The frozen test split contains 1,845 sessions and 286 conversions. The routing policy distributes them as follows.
 
 | Route | Sessions | Share | Conversions in route | Conversion coverage |
 |---|---:|---:|---:|---:|
@@ -102,38 +83,27 @@ Applied to the frozen test split (n = 1,845 sessions, 286 conversions, 15.5% bas
 | Human review | 362 | 19.6% | 50 (13.8% route rate) | 17.5% |
 | Log automatically | 598 | 32.4% | 13 (2.2% route rate) | 4.5% |
 
-The review queue (priority + human review) captures **95.5%** of observed conversions while covering 67.6% of sessions. A random selection of the same size would capture 67.6%. The automatic log contains 13 conversions (4.5% of all conversions) — the cost of not reviewing confidently negative sessions.
+The combined review queue covers 67.6% of sessions and captures **95.5%** of observed conversions. A random queue of the same size would capture 67.6%. The automatic log contains 13 conversions, or 4.5% of all conversions.
 
-All 362 uncertain sessions were routed to human review. Zero safety fallbacks occurred.
+All 362 uncertain sessions went to human review. The test run produced no safety fallbacks.
 
-These numbers are observed in the frozen test split and represent an illustrative workload allocation, not a causal impact, revenue, or ROI estimate. Source: [docs/operational-impact.md](docs/operational-impact.md).
+These results describe one frozen test split. They do not estimate causal impact, revenue, or ROI. See [docs/operational-impact.md](docs/operational-impact.md) for the full report.
 
-## Two end-to-end cases
+## Two worked cases
 
-Both cases use real validation-split rows through the full model and agent chain with the deterministic demo provider. Reviewer actions are scripted illustrations, not observed user-study outcomes. Full records: [docs/decision-cases.md](docs/decision-cases.md).
+The cases use real validation rows and the full model-agent chain. The reviewer responses are scripted examples. See [docs/decision-cases.md](docs/decision-cases.md) for the complete records.
 
-### Case 1: Strong signal → priority review → reviewer agrees
+### Case 1. Strong signal
 
-A returning visitor in November views 256 product pages over 3.7 hours with near-zero bounce and exit rates.
+A returning visitor views 256 product pages over 3.7 hours with near-zero bounce and exit rates. The calibrated probability is **66.7%**, which is 54.7 percentage points above the threshold. The system assigns `PRIORITY_REVIEW` with high priority. The reviewer agrees, and the audit store records the decision.
 
-- **Model evidence** — calibrated purchase probability **66.7%**, well above the 12% threshold (54.7 pp margin). Clear signal, not uncertain.
-- **Route** — `PRIORITY_REVIEW`, high priority. Reason: `HIGH_CONFIDENCE_POSITIVE`.
-- **Action** — added to the priority review queue; human approval not required.
-- **Reviewer** — agrees with the recommendation.
-- **Audit** — the agree decision is recorded with a SHA-256 input fingerprint, model/agent versions, and a timestamp. Retrievable from the append-only store.
+### Case 2. Uncertain signal
 
-### Case 2: Uncertain signal → human review → reviewer overrides
+A returning visitor views 10 product pages over 4.7 minutes. The calibrated probability is **11.1%**, only 0.9 percentage points below the threshold. The uncertainty rule assigns `HUMAN_REVIEW`. The reviewer overrides the recommendation to `LOG_ONLY` and records the reason *signal weaker than scored*.
 
-A returning visitor in March views 10 product pages over 4.7 minutes with a zero bounce rate but a 4.3% exit rate.
+## Agentic decision loop
 
-- **Model evidence** — calibrated purchase probability **11.1%**, just below the 12% threshold (0.9 pp margin). **Uncertain**: inside the ±5 pp uncertainty band.
-- **Route** — `HUMAN_REVIEW`, medium priority. Reason: `MODEL_UNCERTAIN`. Human approval required.
-- **Reviewer** — overrides to "log automatically" with reason: *signal weaker than scored* ("Only 10 product pages and a high exit rate").
-- **Audit** — the override is recorded with the structured reason, the reviewer's note, and the final human-selected decision (`LOG_ONLY`).
-
-## The agentic decision loop
-
-This prototype is more than a prediction endpoint. "Agentic" here means **constrained orchestration and decision routing**, not an autonomous unconstrained agent.
+The agent has a narrow job. It maps validated model evidence to a permitted route and action. It cannot call tools, alter the probability, or create a new route.
 
 ```mermaid
 flowchart LR
@@ -150,18 +120,13 @@ flowchart LR
     P -. "human-led · offline" .-> Q["Policy review"]
 ```
 
-Each step in the loop:
+1. The MLP returns a calibrated probability, threshold, uncertainty flag, and supporting signals.
+2. The decision provider returns fixed-schema JSON with a route, priority, action, reason code, and short explanation.
+3. The validator checks the schema and the cross-field policy. Uncertain predictions must go to human review.
+4. A deterministic fallback handles transport errors, invalid JSON, and policy violations.
+5. The audit store keeps reviewer feedback for later analysis. No step retrains the model or edits the policy.
 
-1. **Model produces calibrated evidence** — the MLP outputs a purchase probability, calibrated on validation data. The API returns the probability, the decision threshold, the uncertainty flag, and supporting signals.
-2. **Constrained decision provider applies written policy** — the agent receives only the validated prediction payload (never raw user text) and must respond with a fixed JSON schema: one of three decisions, a priority, the matching action, reason codes from a closed list, and a short explanation. It cannot call tools, change the probability, or invent a route.
-3. **Schema validation limits outputs** — every proposal is checked against the JSON schema and cross-field policy rules. Each decision must pair with exactly one action. An uncertain prediction must become `HUMAN_REVIEW` regardless of what the agent proposed.
-4. **Uncertainty sends ambiguous cases to humans** — sessions within ±5 pp of the threshold are flagged uncertain. The policy validator enforces that uncertain sessions are always routed to human review.
-5. **Deterministic fallback on any failure** — if both attempts fail (transport error, invalid JSON, schema violation), a plain Python function produces a `SYSTEM_FALLBACK` decision that routes to human review. The system never guesses a route it could not validate.
-6. **Automation can notify, wait, and resume** — the n8n workflow (a separate operational path) receives the route and sends a Slack notification for non-`LOG_ONLY` routes. `HUMAN_REVIEW` and `SYSTEM_FALLBACK` routes pause on a signed wait node until a reviewer approves or the 30-minute window expires. `PRIORITY_REVIEW` completes immediately unless `requires_human_approval` is true.
-7. **Reviewer feedback is retained for human-led analysis** — each agree or override is stored in a local append-only SQLite file with the model evidence, agent decision, human response, structured reason, and version identifiers.
-8. **No automatic retraining or silent policy modification** — the feedback summary is evidence for a person. Nothing in the loop changes the model, the threshold, or the policy automatically.
-
-Details: [docs/decision-loop.md](docs/decision-loop.md).
+See [docs/decision-loop.md](docs/decision-loop.md) for the full contract.
 
 ## System architecture
 
@@ -217,18 +182,13 @@ flowchart TB
     SW -- "HUMAN / FALLBACK" --> SLACK2["Slack notification"] --> WAIT
 ```
 
-**Key boundaries:**
-- The Streamlit UI and n8n are **independent front ends** to the same FastAPI service. The UI does not invoke n8n. UI feedback does not resume an n8n execution.
-- Local UI feedback is stored in **local SQLite**. n8n owns **operational waiting and resume** via its signed approval webhook.
-- Slack is **notification transport only** — it does not predict, decide, or own state.
-- `LOG_ONLY` does not trigger a Slack notification.
-- `PRIORITY_REVIEW` sends a notification and completes immediately unless the decision's `requires_human_approval` flag is true.
-- `HUMAN_REVIEW` and `SYSTEM_FALLBACK` always send a notification and wait for human approval.
-- The local deterministic decision provider follows the same written policy and validation boundary without an external language-model call.
+The UI and n8n call the same FastAPI service through separate paths. The UI never starts an n8n workflow, and UI feedback never resumes an n8n approval. Slack only delivers notifications. It does not predict, decide, or store workflow state.
 
-Architecture details: [docs/architecture.md](docs/architecture.md).
+`LOG_ONLY` stays silent. `PRIORITY_REVIEW` sends a notification and normally completes at once. `HUMAN_REVIEW` and `SYSTEM_FALLBACK` send a notification and wait for approval.
 
-## n8n automation flow
+See [docs/architecture.md](docs/architecture.md) for component boundaries and environment settings.
+
+## n8n automation
 
 ```mermaid
 flowchart TB
@@ -262,139 +222,137 @@ flowchart TB
     APPROVAL --> EVAL["Evaluate approval<br/>→ Send final notification<br/>→ Respond 200"]
 ```
 
-**Key properties:**
-- The workflow is credential-free in its exported JSON — webhook URL and API base URL are `{{$env.*}}` expressions.
-- Duplicate protection uses bounded workflow static data (max 500 entries, 24-hour TTL).
-- Any API failure or invalid decision response produces an automation-origin `SYSTEM_FALLBACK`, not a crash.
-- `LOG_ONLY` performs no external action. The other three routes send a Slack notification.
-- Notifications use human-readable Slack mrkdwn with labeled fields (priority, action, reason, short case reference), not raw enum values or debug formatting. Each notification includes a context line: "Slack delivers the alert; it does not make the decision."
-- The wait node uses a signed, `POST`-only resume URL with a 30-minute bound.
+The export keeps credentials out of JSON and reads its webhook and API URLs from environment variables. It rejects duplicate request IDs before the API call. Invalid responses and API failures become `SYSTEM_FALLBACK`. Notification failure does not crash the full workflow.
 
-Full node-by-node documentation: [docs/n8n-workflow.md](docs/n8n-workflow.md). Test evidence: [docs/automation-test-report.md](docs/automation-test-report.md).
+See [docs/n8n-workflow.md](docs/n8n-workflow.md) for node-level documentation and [docs/automation-test-report.md](docs/automation-test-report.md) for branch coverage.
 
-![The n8n Editor canvas shows the complete 32-node Conversion Quality Router workflow](docs/figures/n8n_workflow_canvas.png)
-*The n8n workflow canvas: incoming webhook through validation, deduplication, API call, decision switch, notification, and approval paths. The Mermaid diagram above is the stable architectural reference; this screenshot shows the actual editor layout.*
+![The n8n Editor canvas shows the complete 32-node workflow](docs/figures/n8n_workflow_canvas.png)
 
-![A real Slack notification shows a priority-review recommendation with the operational action, approval requirement, reason, explanation, and shortened case reference](docs/figures/slack_priority_review.png)
-*End-to-end notification example: a strong purchase signal is routed through the local model and n8n workflow to Slack. Slack delivers the operational alert; the validated decision is produced upstream by the model and constrained routing policy.*
+*The workflow validates the request, calls the routing API, switches on the decision, sends notifications, and handles approval.*
+
+![A real Slack notification shows the priority-review recommendation and action](docs/figures/slack_priority_review.png)
+
+*A real priority-review notification from the local model and n8n workflow. Slack carries the alert but does not make the decision.*
 
 ## Model and evaluation
 
-A PyTorch MLP (`128 → 64 → 32 → 1`, dropout 0.3, early stopping on validation PR-AUC) trained on the [UCI Online Shoppers Purchasing Intention Dataset](https://archive.ics.uci.edu/dataset/468/online+shoppers+purchasing+intention+dataset) (12,330 sessions, 15.5% positive rate). Isotonic calibration on validation data. Decision threshold (0.12) selected by a 5:1 cost-ratio grid search on validation only. Uncertainty band: ±0.05 around the threshold.
+The project trains a PyTorch MLP with layers `128 → 64 → 32 → 1`, dropout 0.3, and early stopping on validation PR-AUC. It uses the [UCI Online Shoppers Purchasing Intention Dataset](https://archive.ics.uci.edu/dataset/468/online+shoppers+purchasing+intention+dataset), which contains 12,330 sessions and a 15.5% positive rate.
 
-**Test set (n = 1,845, touched once):**
+Isotonic calibration uses validation data. A 5:1 cost-ratio search on the same split selects the 0.12 decision threshold. The uncertainty band covers ±0.05 around that threshold.
 
 | Metric | Baseline (LogReg) | MLP (calibrated) |
-|---|---|---|
+|---|---:|---:|
 | PR-AUC | 0.302 | 0.316 |
 | ROC-AUC | 0.7433 | 0.7543 |
-| Brier score | — | 0.1177 |
+| Brier score | n/a | 0.1177 |
 | Precision / Recall | 0.2506 / 0.7832 | 0.2514 / 0.7797 |
 
-The MLP's improvement is small but consistent (+0.014 PR-AUC) — reported honestly, not oversold. PR-AUC is the primary metric because the target is imbalanced.
+The MLP improves PR-AUC by 0.014 over logistic regression. The gain is modest. PR-AUC remains the primary metric because conversions are relatively rare.
 
 <details>
 <summary>Calibration and discrimination</summary>
 
 ![Calibration curve](docs/figures/calibration_curve.png)
-*Isotonic calibration reduces Brier score from 0.2232 (raw sigmoid) to 0.1177 on the test set. The calibration curve shows predicted probabilities tracking observed conversion rates across bins.*
+
+*Isotonic calibration reduces the test Brier score from 0.2232 to 0.1177.*
 
 ![Precision-recall and ROC curves](docs/figures/pr_roc_curves.png)
-*PR-AUC is the primary metric for this imbalanced target. The MLP curve sits slightly above the baseline across most recall levels.*
+
+*The MLP performs slightly better than the baseline across most recall levels.*
 
 </details>
 
 <details>
-<summary>Threshold and workload behavior</summary>
+<summary>Threshold and workload</summary>
 
 ![Threshold cost tradeoff](docs/figures/threshold_cost_tradeoff.png)
-*The 5:1 cost-ratio grid search on validation data selects threshold 0.12. Lower thresholds send more sessions to review (higher recall, lower precision); higher thresholds miss more conversions.*
+
+*The validation cost search selects threshold 0.12. Lower thresholds increase recall and workload.*
 
 ![Operational route distribution](docs/figures/operational_route_shares.png)
-*How the frozen routing policy distributes sessions and conversions across routes on the test split. The review queue captures 95.5% of conversions while covering 67.6% of sessions.*
+
+*The review routes capture 95.5% of conversions while covering 67.6% of sessions.*
 
 </details>
 
-**Hyperparameter sensitivity.** A [bounded validation-only study](docs/hyperparameter-sensitivity.md) compared 5 configurations across 3 seeds (15 runs). No configuration met the preregistered threshold for a notable candidate. The total PR-AUC range was 0.006 (0.3552–0.3611), confirming that the v1 configuration is not uniquely optimal but no alternative demonstrated a robust improvement. V1 remains authoritative.
+A bounded [hyperparameter sensitivity study](docs/hyperparameter-sensitivity.md) compares five configurations across three seeds. No alternative meets the preregistered promotion rule, so v1 remains the reference model.
 
-Deeper documentation: [docs/model-card.md](docs/model-card.md) · [docs/evaluation-card.md](docs/evaluation-card.md) · [docs/test-evaluation-report.md](docs/test-evaluation-report.md).
+Read the [model card](docs/model-card.md), [evaluation card](docs/evaluation-card.md), and [test evaluation report](docs/test-evaluation-report.md) for more detail.
 
 ## Safety boundaries
 
-- **No irreversible action.** The system routes review priority; it does not deny, restrict, or take any irreversible action against a session or a person.
-- **Fail to human.** Every failure — model, agent, network, validation — produces a `SYSTEM_FALLBACK` that routes to human review. The system never silently drops a session.
-- **Schema-enforced outputs.** The agent cannot invent a route, change the probability, or produce free-form output. `SYSTEM_FALLBACK` is not in the schema sent to the provider — the model cannot select it.
-- **Uncertainty forces human review.** The cross-field validator overrides any agent proposal for uncertain predictions: they must become `HUMAN_REVIEW`.
-- **Bounded retry.** At most one retry (two attempts total). No error-correction feedback loop.
-- **Append-only audit.** Feedback rows cannot be updated or deleted. One review per request.
-- **No automatic retraining.** Feedback is evidence for humans. The loop never changes the model, threshold, or policy.
+- The router only assigns review priority. It does not deny service or take an irreversible action.
+- Any model, agent, network, or validation failure goes to `SYSTEM_FALLBACK` and human review.
+- The fixed schema prevents the agent from inventing routes or changing the model probability.
+- The policy validator sends every uncertain prediction to `HUMAN_REVIEW`.
+- The API allows one retry, for two attempts in total.
+- Database triggers block updates and deletes from the feedback store.
+- Feedback never retrains the model or changes policy automatically.
 
-Agent guardrails: [docs/agent-policy.md](docs/agent-policy.md) · [docs/agent-card.md](docs/agent-card.md).
+Read [docs/agent-policy.md](docs/agent-policy.md) and [docs/agent-card.md](docs/agent-card.md) for the complete guardrails.
 
-## Limitations and non-goals
+## Limitations
 
-- The dataset has no real timestamp field — there is no temporal holdout.
-- The MLP's improvement over logistic regression is small (+0.014 PR-AUC).
-- Calibration and uncertainty band are fit on one validation split of one dataset, not validated against a second source.
-- `TrafficType` is an anonymized integer code — no platform-dependence claim is made or supportable.
-- n8n's duplicate store uses in-process workflow static data, not a durable external store.
-- This is a single-instance, local proof of concept — no queue mode, no horizontal scaling, no container deployment.
-- Feedback volume is whatever reviewers enter locally; worked cases use scripted actions.
-- The system should not be deployed against a materially different population without re-evaluating calibration and the threshold on that population's held-out data.
+- The dataset has no real timestamp, so the evaluation has no temporal holdout.
+- The MLP improves PR-AUC by only 0.014 over logistic regression.
+- Calibration and uncertainty use one validation split from one dataset.
+- `TrafficType` is an anonymized code, so it cannot support platform-specific claims.
+- n8n keeps duplicate IDs in process memory, not in a durable store.
+- The prototype runs as one local instance without queue mode, horizontal scaling, or container deployment.
+- The worked cases use scripted reviewer actions, not observed user behavior.
+- A new target population would require fresh calibration and threshold evaluation.
 
 ## Project structure
 
-```
+```text
 src/conversion_router/
     data/           Data loading, validation, preprocessing
     modeling/       Baseline and MLP training, calibration, inference
     agent/          Decision provider, schema validation, fallback
-    api/            FastAPI endpoints (/health, /ready, /predict, /decide, /route)
-    feedback/       Reviewer feedback schemas, append-only store, summary
-    ui/             Streamlit UI (evaluate, queue, feedback)
-scripts/            Reproducible entrypoints (download, train, evaluate, smoke-test, QA)
-automation/         n8n workflow export + start/stop scripts + fixtures
-notebooks/          One narrated, executed evaluation notebook
+    api/            FastAPI endpoints
+    feedback/       Feedback schema, append-only store, summary
+    ui/             Streamlit UI
+scripts/            Training, evaluation, smoke tests, QA
+automation/         n8n export, scripts, fixtures
+notebooks/          Executed end-to-end analysis
 tests/              Unit and integration tests
-docs/               Architecture, policy, workflow, cards, reports, figures
-prompts/            Versioned agent system prompt
-artifacts/metadata/ Git-tracked JSON evidence (thresholds, hashes, metrics)
-data/sample/        Committed 50-row sample fixture (CC BY 4.0)
+docs/               Architecture, policies, reports, figures
+prompts/            Versioned agent prompt
+artifacts/metadata/ Thresholds, hashes, metrics
+data/sample/        50-row sample fixture
 ```
 
 ## Reproducibility
 
-- Seed `42` throughout (split, baseline, MLP training).
-- `artifacts/metadata/*.json` records exact thresholds, uncertainty band, artifact SHA-256 hashes, and package versions.
-- The test set is touched exactly once, after all model/threshold/calibration decisions are frozen.
-- The full pipeline — fresh venv, install, download, retrain, evaluate, API smoke, n8n import — is independently verified from a clean checkout: [`scripts/verify_clean_room.sh`](scripts/verify_clean_room.sh).
+- Split, baseline, and MLP training use seed `42`.
+- `artifacts/metadata/*.json` records thresholds, package versions, and artifact hashes.
+- The project accesses the test split once, after freezing model and threshold choices.
+- [`scripts/verify_clean_room.sh`](scripts/verify_clean_room.sh) rebuilds and checks the pipeline from a clean checkout.
 
 ## Documentation
 
-| Document | Purpose |
+| Document | Covers |
 |---|---|
-| [Case study](docs/case-study.md) | Standalone narrative: problem, solution, evidence, limitations |
-| [Decision loop](docs/decision-loop.md) | How prediction becomes a routing decision |
-| [Decision cases](docs/decision-cases.md) | Two worked end-to-end validation cases |
-| [Operational impact](docs/operational-impact.md) | Route distribution and conversion coverage on the frozen test split |
-| [Architecture](docs/architecture.md) | Component boundaries, environment variables, artifact paths |
-| [Model card](docs/model-card.md) | Model purpose, data, metrics, limitations |
-| [Agent card](docs/agent-card.md) | Agent inputs/outputs, schema, validation, failure modes |
-| [Evaluation card](docs/evaluation-card.md) | Evaluation design, test discipline, acceptance matrix |
-| [Agent policy](docs/agent-policy.md) | Decision agent contract, validation rules, fallback |
-| [n8n workflow](docs/n8n-workflow.md) | Node-by-node automation flow, setup, contracts |
-| [Automation test report](docs/automation-test-report.md) | Observed evidence for every n8n branch and error scenario |
-| [Leakage audit](docs/leakage-audit.md) | Per-feature leakage review, PageValues exclusion, duplicate handling |
-| [Baseline report](docs/baseline-report.md) | Logistic regression baseline metrics and threshold selection |
-| [Test evaluation report](docs/test-evaluation-report.md) | Final test-set metrics, confusion matrices, error analysis |
-| [Hyperparameter sensitivity](docs/hyperparameter-sensitivity.md) | Bounded validation-only sensitivity study (5 configs × 3 seeds) |
+| [Case study](docs/case-study.md) | Problem, solution, evidence, limitations |
+| [Decision loop](docs/decision-loop.md) | Prediction and routing logic |
+| [Decision cases](docs/decision-cases.md) | Two validation examples |
+| [Operational impact](docs/operational-impact.md) | Workload and conversion coverage |
+| [Architecture](docs/architecture.md) | Components, environment, artifacts |
+| [Model card](docs/model-card.md) | Model, data, metrics, limitations |
+| [Agent card](docs/agent-card.md) | Inputs, outputs, validation, failures |
+| [Evaluation card](docs/evaluation-card.md) | Test design and acceptance checks |
+| [Agent policy](docs/agent-policy.md) | Decision contract and fallback |
+| [n8n workflow](docs/n8n-workflow.md) | Automation setup and node behavior |
+| [Automation test report](docs/automation-test-report.md) | n8n branch evidence |
+| [Leakage audit](docs/leakage-audit.md) | Feature review and duplicate handling |
+| [Baseline report](docs/baseline-report.md) | Baseline metrics and threshold selection |
+| [Test evaluation report](docs/test-evaluation-report.md) | Final metrics and error analysis |
+| [Hyperparameter sensitivity](docs/hyperparameter-sensitivity.md) | Five configurations across three seeds |
 
 ## Licensing
 
-**Repository code** is released under the [MIT License](LICENSE).
+The code uses the [MIT License](LICENSE).
 
-**Dataset:** The [UCI Online Shoppers Purchasing Intention Dataset](https://archive.ics.uci.edu/dataset/468/online+shoppers+purchasing+intention+dataset) (DOI: [10.24432/C5F88Q](https://doi.org/10.24432/C5F88Q)) is licensed separately under **CC BY 4.0**. The committed 50-row sample fixture ([data/sample/online_shoppers_sample.csv](data/sample/online_shoppers_sample.csv)) is redistributed under the same CC BY 4.0 license. This repository does not claim ownership of or relicense the dataset.
+The [UCI Online Shoppers Purchasing Intention Dataset](https://archive.ics.uci.edu/dataset/468/online+shoppers+purchasing+intention+dataset) uses the **CC BY 4.0** license. Its DOI is [10.24432/C5F88Q](https://doi.org/10.24432/C5F88Q). The committed [50-row sample](data/sample/online_shoppers_sample.csv) keeps the same license. This repository does not claim ownership of the dataset.
 
-**Third-party packages** (listed in `pyproject.toml`) are distributed under their own licenses. This project does not bundle or relicense them.
-
-Full dataset documentation and reproduction steps: [data/README.md](data/README.md).
+Third-party packages keep their own licenses. See [data/README.md](data/README.md) for dataset details and reproduction steps.
