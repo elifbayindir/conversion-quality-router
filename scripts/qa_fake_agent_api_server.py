@@ -19,62 +19,18 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import threading
 import time
 import urllib.request
 
 import uvicorn
 
+from conversion_router.agent.demo_providers import DEMO_PROVIDERS
 from conversion_router.api.app import create_app
 
-
-class RuleBasedFakeProvider:
-    """Deterministically reproduces the decision policy from
-    prompts/decision_agent_v1.md given the REAL PredictionResponse it
-    receives. No network call, no randomness, no LLM involved."""
-
-    def complete_decision(self, system_prompt: str, user_content: str) -> str:
-        prediction = json.loads(user_content)["prediction"]
-        if prediction["uncertain"]:
-            body = {
-                "decision": "HUMAN_REVIEW",
-                "priority": "MEDIUM",
-                "allowed_action": "ADD_TO_REVIEW_QUEUE",
-                "requires_human_approval": True,
-                "reason_codes": ["MODEL_UNCERTAIN"],
-                "explanation": "Prediction is within the uncertainty band of the threshold.",
-            }
-        elif prediction["predicted_class"] == "likely_to_convert":
-            body = {
-                "decision": "PRIORITY_REVIEW",
-                "priority": "HIGH",
-                "allowed_action": "ADD_TO_REVIEW_QUEUE_PRIORITY",
-                "requires_human_approval": False,
-                "reason_codes": ["HIGH_CONFIDENCE_POSITIVE"],
-                "explanation": "Purchase probability is comfortably above the decision threshold.",
-            }
-        else:
-            body = {
-                "decision": "LOG_ONLY",
-                "priority": "LOW",
-                "allowed_action": "ADD_TO_LOG",
-                "requires_human_approval": False,
-                "reason_codes": ["HIGH_CONFIDENCE_NEGATIVE"],
-                "explanation": "Purchase probability is comfortably below the decision threshold.",
-            }
-        return json.dumps(body)
-
-
-class AlwaysInvalidProvider:
-    """Deterministically returns unusable content on every attempt, so the
-    real agent client's bounded-retry-then-fallback chain runs for real."""
-
-    def complete_decision(self, system_prompt: str, user_content: str) -> str:
-        return "this is not valid JSON output"
-
-
-PROVIDERS = {"rule_based": RuleBasedFakeProvider, "invalid": AlwaysInvalidProvider}
+# Providers live in conversion_router.agent.demo_providers (D14) so the UI
+# launcher and offline analyses reuse the same code; injected explicitly below.
+PROVIDERS = DEMO_PROVIDERS
 
 
 def _install_once_ready(app, provider, port: int) -> None:

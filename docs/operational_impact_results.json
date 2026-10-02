@@ -1,0 +1,105 @@
+{
+  "analysis_type": "frozen_test_operational_analysis",
+  "source": {
+    "analysis_type": "frozen_test_operational_analysis",
+    "split": "test (frozen single-pass predictions, read-only)",
+    "predictions_file": "data/processed/test_predictions.csv",
+    "predictions_sha256": "7c22d2ea38fa3b56142933730591b6bd859cd6de9a3f7997df95834ef8070d44",
+    "evaluation_file": "artifacts/metadata/test_evaluation.json",
+    "evaluation_sha256": "020d4ba28d7f7f8c4a42129d6deb8c7c799d94b57272eab014585447e6954a18",
+    "integrity_checks": {
+      "row_count_matches_evaluation": true,
+      "true_positives_match_evaluation": true,
+      "false_positives_match_evaluation": true,
+      "uncertain_count_matches_evaluation": true,
+      "threshold_matches_evaluation": true,
+      "uncertain_flags_match_frozen_rule": true
+    },
+    "model_metadata_file": "artifacts/metadata/mlp_metadata.json",
+    "model_metadata_sha256": "b77012c5e64a76f6992d100c7a35a48107077460053df1dc9a2c40de2e81aa2d",
+    "decision_prompt_file": "prompts/decision_agent_v1.md",
+    "decision_prompt_sha256": "4948323ff77d96d517e6953a609a7eb8218f7f702b28cd7ec000af21218ba99f"
+  },
+  "model": {
+    "name": "conversion_mlp",
+    "version": "1.0.0",
+    "feature_contract_version": "1.0.0"
+  },
+  "policy": {
+    "decision_threshold": 0.12,
+    "false_negative_cost": 5.0,
+    "false_positive_cost": 1.0,
+    "uncertainty_band": 0.05,
+    "agent_version": "1.0.0",
+    "route_source": "conversion_router.agent.client.get_decision with the deterministic RuleBasedFakeProvider (no LLM call)",
+    "parameters_chosen_here": "none (threshold, band, and policy are frozen inputs)"
+  },
+  "metrics": {
+    "n_sessions": 1845,
+    "n_conversions": 286,
+    "base_conversion_rate": 0.155,
+    "routes": [
+      {
+        "route": "PRIORITY_REVIEW",
+        "label": "Priority review",
+        "sessions": 885,
+        "share_of_sessions": 0.4797,
+        "conversions": 223,
+        "route_conversion_rate": 0.252,
+        "share_of_all_conversions": 0.7797
+      },
+      {
+        "route": "HUMAN_REVIEW",
+        "label": "Human review",
+        "sessions": 362,
+        "share_of_sessions": 0.1962,
+        "conversions": 50,
+        "route_conversion_rate": 0.1381,
+        "share_of_all_conversions": 0.1748
+      },
+      {
+        "route": "SYSTEM_FALLBACK",
+        "label": "Safety fallback",
+        "sessions": 0,
+        "share_of_sessions": 0.0,
+        "conversions": 0,
+        "route_conversion_rate": 0.0,
+        "share_of_all_conversions": 0.0
+      },
+      {
+        "route": "LOG_ONLY",
+        "label": "Logged automatically",
+        "sessions": 598,
+        "share_of_sessions": 0.3241,
+        "conversions": 13,
+        "route_conversion_rate": 0.0217,
+        "share_of_all_conversions": 0.0455
+      }
+    ],
+    "summary": {
+      "automatically_logged_share": 0.3241,
+      "review_queue_share": 0.6759,
+      "priority_review_share": 0.4797,
+      "human_review_share": 0.1962,
+      "priority_plus_human_review_conversion_coverage": 0.9545,
+      "conversions_in_automatic_log": 13,
+      "share_of_conversions_in_automatic_log": 0.0455,
+      "random_selection_of_same_size_expected_coverage": 0.6759
+    },
+    "workload_per_1000_sessions": {
+      "priority_review": 479.7,
+      "human_review": 196.2,
+      "total_review_queue": 675.9
+    },
+    "policy_consistency": {
+      "uncertain_sessions": 362,
+      "uncertain_sessions_routed_to_human_review": 362,
+      "system_fallbacks": 0
+    }
+  },
+  "non_claims": [
+    "No revenue, profit, uplift, or ROI is estimated.",
+    "Routes reflect the written policy as reproduced by the deterministic provider. A live language model could choose a different route for a clear-cut session; the validator still forces every uncertain session to human review.",
+    "Public dataset, offline analysis; not connected to a live event stream."
+  ]
+}

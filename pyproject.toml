@@ -7,6 +7,7 @@ name = "conversion-quality-router"
 version = "0.1.0"
 description = "Conversion quality prediction, structured LLM decision agent, and n8n routing automation for e-commerce sessions."
 requires-python = ">=3.11,<3.12"
+readme = "README.md"
 dependencies = [
   "pandas>=2.1,<3",
   "numpy>=1.26,<2",
@@ -27,6 +28,10 @@ dev = [
   "matplotlib>=3.8,<4",
   "nbconvert>=7.16,<8",
   "ipykernel>=6.29,<7",
+]
+# Optional local decision-support UI (HTTP client of the FastAPI service only).
+ui = [
+  "streamlit>=1.40,<2",
 ]
 
 [tool.setuptools.packages.find]

@@ -16,6 +16,8 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from conversion_router.modeling.network import (
+    DROPOUT,
+    HIDDEN_SIZES,
     MLP_VERSION,
     ConversionMLP,
     TabularDataset,
@@ -68,11 +70,13 @@ def train_mlp(
     patience: int = DEFAULT_PATIENCE,
     learning_rate: float = DEFAULT_LEARNING_RATE,
     batch_size: int = DEFAULT_BATCH_SIZE,
+    hidden_sizes: tuple[int, ...] = HIDDEN_SIZES,
+    dropout: float = DROPOUT,
 ) -> TrainingResult:
     """Train with early stopping on validation PR-AUC. Returns the best checkpoint."""
     set_seed(seed)
     input_dim = X_train.shape[1]
-    model = ConversionMLP(input_dim)
+    model = ConversionMLP(input_dim, hidden_sizes=hidden_sizes, dropout=dropout)
 
     train_dataset = TabularDataset(X_train, y_train)
     generator = torch.Generator().manual_seed(seed)

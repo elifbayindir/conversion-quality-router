@@ -1,0 +1,255 @@
+{
+  "generated_by": "scripts/build_decision_cases.py",
+  "decision_provider": "RuleBasedFakeProvider via the real agent chain (no LLM call)",
+  "feedback_store": "temporary SQLite file (the real local store is not touched)",
+  "cases": [
+    {
+      "key": "strong_signal",
+      "title": "Strong signal routed to priority review, reviewer agrees",
+      "source": "validation split, row_index 6797 (automation/fixtures/real_model_priority_review.json)",
+      "session_context": [
+        {
+          "input": "Visitor type",
+          "value": "Returning visitor"
+        },
+        {
+          "input": "Session month",
+          "value": "November"
+        },
+        {
+          "input": "Weekend session",
+          "value": "No"
+        },
+        {
+          "input": "Product pages viewed",
+          "value": "256"
+        },
+        {
+          "input": "Time on product pages (seconds)",
+          "value": "13453.3"
+        },
+        {
+          "input": "Information pages viewed",
+          "value": "2"
+        },
+        {
+          "input": "Time on information pages (seconds)",
+          "value": "113.8"
+        },
+        {
+          "input": "Average bounce rate (0-1)",
+          "value": "0"
+        },
+        {
+          "input": "Average exit rate (0-1)",
+          "value": "0.00324096"
+        }
+      ],
+      "model_evidence": {
+        "purchase_probability": 0.6667,
+        "decision_threshold": 0.12,
+        "predicted_class": "likely_to_convert",
+        "signals": [
+          "Returning visitor",
+          "Weekday session",
+          "Low bounce rate",
+          "Low exit rate",
+          "Long time on product pages",
+          "Many information pages viewed"
+        ],
+        "model": "conversion_mlp 1.0.0"
+      },
+      "uncertainty": {
+        "uncertain": false,
+        "decision_margin": 0.5467,
+        "text": "Clear signal: outside the uncertainty band (54.7 percentage points from the threshold)."
+      },
+      "agent_decision": {
+        "decision": "PRIORITY_REVIEW",
+        "priority": "HIGH",
+        "reason_codes": [
+          "HIGH_CONFIDENCE_POSITIVE"
+        ],
+        "explanation": "Purchase probability is comfortably above the decision threshold.",
+        "agent_version": "1.0.0",
+        "schema_version": "1.0.0"
+      },
+      "operational_action": {
+        "allowed_action": "ADD_TO_REVIEW_QUEUE_PRIORITY",
+        "label": "Add to priority review queue",
+        "requires_human_approval": false
+      },
+      "human_feedback": {
+        "response": "AGREE",
+        "override_reason": null,
+        "note": null,
+        "final_decision": "PRIORITY_REVIEW",
+        "scripted": true
+      },
+      "audit_record": {
+        "event_id": "fb_ba1554391aa34c0187e97ef25c18c887",
+        "created_at": "2026-10-01T08:23:52+00:00",
+        "request_id": "req_20261001082352_170688ab",
+        "input_fingerprint": "f15088bb022100ce430676781619b0dcce2c6a20933c4e5aebb8957f01f704c6",
+        "purchase_probability": 0.6667,
+        "decision_threshold": 0.12,
+        "decision_margin": 0.5467,
+        "uncertain": false,
+        "predicted_class": "likely_to_convert",
+        "signals": [
+          "returning_visitor",
+          "weekday_session",
+          "low_bounce_rate",
+          "low_exit_rate",
+          "long_product_related_duration",
+          "high_informational_engagement"
+        ],
+        "model_name": "conversion_mlp",
+        "model_version": "1.0.0",
+        "feature_contract_version": "1.0.0",
+        "agent_decision": "PRIORITY_REVIEW",
+        "priority": "HIGH",
+        "recommended_action": "ADD_TO_REVIEW_QUEUE_PRIORITY",
+        "requires_human_approval": false,
+        "agent_reason_codes": [
+          "HIGH_CONFIDENCE_POSITIVE"
+        ],
+        "agent_version": "1.0.0",
+        "decision_schema_version": "1.0.0",
+        "human_response": "AGREE",
+        "override_reason": null,
+        "reviewer_note": null,
+        "final_decision": "PRIORITY_REVIEW",
+        "feedback_schema_version": "1.0.0"
+      },
+      "known_outcome": {
+        "converted": false,
+        "note": "Validation label, unavailable at decision time; shown for transparency. The scripted reviewer action is not a claim of accuracy."
+      }
+    },
+    {
+      "key": "uncertain_signal",
+      "title": "Uncertain signal routed to human review, reviewer overrides",
+      "source": "validation split, row_index 214 (automation/fixtures/real_model_human_review.json)",
+      "session_context": [
+        {
+          "input": "Visitor type",
+          "value": "Returning visitor"
+        },
+        {
+          "input": "Session month",
+          "value": "March"
+        },
+        {
+          "input": "Weekend session",
+          "value": "No"
+        },
+        {
+          "input": "Product pages viewed",
+          "value": "10"
+        },
+        {
+          "input": "Time on product pages (seconds)",
+          "value": "281"
+        },
+        {
+          "input": "Information pages viewed",
+          "value": "3"
+        },
+        {
+          "input": "Time on information pages (seconds)",
+          "value": "261"
+        },
+        {
+          "input": "Average bounce rate (0-1)",
+          "value": "0"
+        },
+        {
+          "input": "Average exit rate (0-1)",
+          "value": "0.0428571"
+        }
+      ],
+      "model_evidence": {
+        "purchase_probability": 0.1111,
+        "decision_threshold": 0.12,
+        "predicted_class": "unlikely_to_convert",
+        "signals": [
+          "Returning visitor",
+          "Weekday session",
+          "Low bounce rate",
+          "High exit rate",
+          "Short time on product pages",
+          "Many information pages viewed"
+        ],
+        "model": "conversion_mlp 1.0.0"
+      },
+      "uncertainty": {
+        "uncertain": true,
+        "decision_margin": 0.0089,
+        "text": "Uncertain: inside the uncertainty band (0.9 percentage points from the threshold)."
+      },
+      "agent_decision": {
+        "decision": "HUMAN_REVIEW",
+        "priority": "MEDIUM",
+        "reason_codes": [
+          "MODEL_UNCERTAIN"
+        ],
+        "explanation": "Prediction is within the uncertainty band of the threshold.",
+        "agent_version": "1.0.0",
+        "schema_version": "1.0.0"
+      },
+      "operational_action": {
+        "allowed_action": "ADD_TO_REVIEW_QUEUE",
+        "label": "Add to review queue",
+        "requires_human_approval": true
+      },
+      "human_feedback": {
+        "response": "OVERRIDE",
+        "override_reason": "SIGNAL_WEAKER_THAN_SCORED",
+        "note": "Only 10 product pages and a high exit rate.",
+        "final_decision": "LOG_ONLY",
+        "scripted": true
+      },
+      "audit_record": {
+        "event_id": "fb_57b1b8170adb45819d51aff40f609465",
+        "created_at": "2026-10-01T08:23:52+00:00",
+        "request_id": "req_20261001082352_4c6a6894",
+        "input_fingerprint": "edd104d0e292065a1c03f896eee95db9c630f2eef3e6053b276e5cd98d7b0b2d",
+        "purchase_probability": 0.1111,
+        "decision_threshold": 0.12,
+        "decision_margin": 0.0089,
+        "uncertain": true,
+        "predicted_class": "unlikely_to_convert",
+        "signals": [
+          "returning_visitor",
+          "weekday_session",
+          "low_bounce_rate",
+          "high_exit_rate",
+          "short_product_related_duration",
+          "high_informational_engagement"
+        ],
+        "model_name": "conversion_mlp",
+        "model_version": "1.0.0",
+        "feature_contract_version": "1.0.0",
+        "agent_decision": "HUMAN_REVIEW",
+        "priority": "MEDIUM",
+        "recommended_action": "ADD_TO_REVIEW_QUEUE",
+        "requires_human_approval": true,
+        "agent_reason_codes": [
+          "MODEL_UNCERTAIN"
+        ],
+        "agent_version": "1.0.0",
+        "decision_schema_version": "1.0.0",
+        "human_response": "OVERRIDE",
+        "override_reason": "SIGNAL_WEAKER_THAN_SCORED",
+        "reviewer_note": "Only 10 product pages and a high exit rate.",
+        "final_decision": "LOG_ONLY",
+        "feedback_schema_version": "1.0.0"
+      },
+      "known_outcome": {
+        "converted": false,
+        "note": "Validation label, unavailable at decision time; shown for transparency. The scripted reviewer action is not a claim of accuracy."
+      }
+    }
+  ]
+}

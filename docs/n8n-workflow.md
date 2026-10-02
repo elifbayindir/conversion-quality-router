@@ -274,6 +274,37 @@ messages sent externally (webhook response, Slack) never include secrets,
 raw provider responses, or full stack traces -- only a short, truncated
 `message` string.
 
+## Notification format
+
+Each Slack notification uses human-readable Slack mrkdwn, not raw enum
+values or debug-style formatting. The four notification types are:
+
+| Notification | Title | When sent |
+|---|---|---|
+| Priority review | *Priority review recommended* | `PRIORITY_REVIEW` route |
+| Human review | *Human review required* | `HUMAN_REVIEW` route |
+| Safety fallback | *Safety fallback — human review required* | `SYSTEM_FALLBACK` route |
+| Final outcome | *Review outcome recorded* | After approval resolves |
+
+Each notification includes:
+
+- A human-readable title and summary sentence.
+- Labeled fields: priority, recommended action, human approval status,
+  reason (mapped from `reason_codes[0]` to a plain-language label), and
+  the agent's explanation.
+- A short case reference: the last 8 characters of `workflow_request_id`,
+  prefixed with an ellipsis. The full ID is never rendered in the
+  notification text.
+- A context line: *"Slack delivers the alert; it does not make the
+  decision."*
+
+`LOG_ONLY` sends no notification (per decision D02).
+
+The `approval_resume_url` is included as a machine-readable field in the
+three initial notifications (required by the demo approval flow) but is
+never rendered in the notification text. The final outcome notification
+does not include a resume URL at all.
+
 ## Known PoC limitations
 
 - Duplicate tracking is in-process workflow static data, not a durable

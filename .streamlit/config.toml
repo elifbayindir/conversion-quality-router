@@ -1,0 +1,15 @@
+# Local decision-support UI (scripts/start_ui.sh runs Streamlit from the project root).
+
+[client]
+# Hide developer-only toolbar items such as Deploy; technical details stay in the app.
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#4F46E5"
+backgroundColor = "#F7F8FC"
+secondaryBackgroundColor = "#EEF2FF"
+textColor = "#1F2937"
