@@ -1,4 +1,4 @@
-# Conversion Quality Router
+# Conversion Decision Router
 
 A local decision-support system for e-commerce session review. It estimates purchase probability, prioritizes strong signals, sends uncertain cases to a person, and logs clear negatives.
 
