@@ -1,0 +1,72 @@
+{
+  "baseline_validation_pr_auc": 0.35169,
+  "importance": {
+    "Administrative": {
+      "mean_pr_auc_decrease": 0.009867,
+      "std_pr_auc_decrease": 0.00372
+    },
+    "Administrative_Duration": {
+      "mean_pr_auc_decrease": 0.012796,
+      "std_pr_auc_decrease": 0.003405
+    },
+    "BounceRates": {
+      "mean_pr_auc_decrease": 0.016576,
+      "std_pr_auc_decrease": 0.006721
+    },
+    "Browser": {
+      "mean_pr_auc_decrease": 0.012173,
+      "std_pr_auc_decrease": 0.003191
+    },
+    "ExitRates": {
+      "mean_pr_auc_decrease": 0.06257,
+      "std_pr_auc_decrease": 0.012743
+    },
+    "Informational": {
+      "mean_pr_auc_decrease": 0.004186,
+      "std_pr_auc_decrease": 0.002715
+    },
+    "Informational_Duration": {
+      "mean_pr_auc_decrease": 0.005823,
+      "std_pr_auc_decrease": 0.001791
+    },
+    "Month": {
+      "mean_pr_auc_decrease": 0.076739,
+      "std_pr_auc_decrease": 0.010369
+    },
+    "OperatingSystems": {
+      "mean_pr_auc_decrease": 0.024485,
+      "std_pr_auc_decrease": 0.003258
+    },
+    "ProductRelated": {
+      "mean_pr_auc_decrease": 0.012078,
+      "std_pr_auc_decrease": 0.003864
+    },
+    "ProductRelated_Duration": {
+      "mean_pr_auc_decrease": 0.029796,
+      "std_pr_auc_decrease": 0.008593
+    },
+    "Region": {
+      "mean_pr_auc_decrease": 0.009944,
+      "std_pr_auc_decrease": 0.003062
+    },
+    "SpecialDay": {
+      "mean_pr_auc_decrease": 0.005272,
+      "std_pr_auc_decrease": 0.003962
+    },
+    "TrafficType": {
+      "mean_pr_auc_decrease": 0.030067,
+      "std_pr_auc_decrease": 0.00675
+    },
+    "VisitorType": {
+      "mean_pr_auc_decrease": 0.017321,
+      "std_pr_auc_decrease": 0.003338
+    },
+    "Weekend": {
+      "mean_pr_auc_decrease": 0.00439,
+      "std_pr_auc_decrease": 0.001371
+    }
+  },
+  "n_features": 16,
+  "n_repeats": 20,
+  "seed": 42
+}
